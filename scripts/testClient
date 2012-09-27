@@ -2,8 +2,8 @@ use strict;
 use Data::Dumper;
 
 use FindBin;
-use lib "$FindBin::Bin/../lib";
-use NameTranslationClient;
+use lib "$FindBin::Bin/../lib/";
+use Bio::KBase::translation::NameTranslationClient;
 
 
 my $client = NameTranslationClient->new("http://localhost:5000");
