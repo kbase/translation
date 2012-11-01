@@ -55,7 +55,7 @@ sub new
 
 =head2 fids_to_moLocusIds
 
-  $return = $obj->fids_to_moLocusIds($arg_1)
+  $return = $obj->fids_to_moLocusIds($fids)
 
 =over 4
 
@@ -64,7 +64,7 @@ sub new
 =begin html
 
 <pre>
-$arg_1 is a reference to a list where each element is a fid
+$fids is a reference to a list where each element is a fid
 $return is a reference to a hash where the key is a fid and the value is a moLocusId
 fid is a string
 moLocusId is an int
@@ -75,7 +75,7 @@ moLocusId is an int
 
 =begin text
 
-$arg_1 is a reference to a list where each element is a fid
+$fids is a reference to a list where each element is a fid
 $return is a reference to a hash where the key is a fid and the value is a moLocusId
 fid is a string
 moLocusId is an int
@@ -96,10 +96,10 @@ moLocusId is an int
 sub fids_to_moLocusIds
 {
     my $self = shift;
-    my($arg_1) = @_;
+    my($fids) = @_;
 
     my @_bad_arguments;
-    (ref($arg_1) eq 'ARRAY') or push(@_bad_arguments, "Invalid type for argument \"arg_1\" (value was \"$arg_1\")");
+    (ref($fids) eq 'ARRAY') or push(@_bad_arguments, "Invalid type for argument \"fids\" (value was \"$fids\")");
     if (@_bad_arguments) {
 	my $msg = "Invalid arguments passed to fids_to_moLocusIds:\n" . join("", map { "\t$_\n" } @_bad_arguments);
 	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
@@ -110,8 +110,24 @@ sub fids_to_moLocusIds
     my($return);
     #BEGIN fids_to_moLocusIds
 
+	my $moDbh=$self->{moDbh};
 
+	my $fidCount=scalar @$fids;
+	my $placeholders='?,' x $fidCount;
+	chop $placeholders;
+	
+	my $sql="SELECT aaMD5,locusId FROM Locus2MD5 WHERE aaMD5 IN ($placeholders)";
+	my $moSth=$moDbh->prepare($sql);
+	$moSth->execute(@$fids);
 
+	my %fids_to_moLocusIds = map { $_ => [] } @$fids;
+	while (my $row=$moSth->fetch)
+	{
+		push @{$fids_to_moLocusIds{$row->[0]}},$row->[1];
+
+	}
+
+	$return=\%fids_to_moLocusIds;
 
     #END fids_to_moLocusIds
     my @_bad_returns;
@@ -129,7 +145,7 @@ sub fids_to_moLocusIds
 
 =head2 moLocusIds_to_fids
 
-  $return = $obj->moLocusIds_to_fids($arg_1)
+  $return = $obj->moLocusIds_to_fids($moLocusIds)
 
 =over 4
 
@@ -138,7 +154,7 @@ sub fids_to_moLocusIds
 =begin html
 
 <pre>
-$arg_1 is a reference to a list where each element is a moLocusId
+$moLocusIds is a reference to a list where each element is a moLocusId
 $return is a reference to a hash where the key is a moLocusId and the value is a fid
 moLocusId is an int
 fid is a string
@@ -149,7 +165,7 @@ fid is a string
 
 =begin text
 
-$arg_1 is a reference to a list where each element is a moLocusId
+$moLocusIds is a reference to a list where each element is a moLocusId
 $return is a reference to a hash where the key is a moLocusId and the value is a fid
 moLocusId is an int
 fid is a string
@@ -170,10 +186,10 @@ fid is a string
 sub moLocusIds_to_fids
 {
     my $self = shift;
-    my($arg_1) = @_;
+    my($moLocusIds) = @_;
 
     my @_bad_arguments;
-    (ref($arg_1) eq 'ARRAY') or push(@_bad_arguments, "Invalid type for argument \"arg_1\" (value was \"$arg_1\")");
+    (ref($moLocusIds) eq 'ARRAY') or push(@_bad_arguments, "Invalid type for argument \"moLocusIds\" (value was \"$moLocusIds\")");
     if (@_bad_arguments) {
 	my $msg = "Invalid arguments passed to moLocusIds_to_fids:\n" . join("", map { "\t$_\n" } @_bad_arguments);
 	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
