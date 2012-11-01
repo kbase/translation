@@ -25,8 +25,8 @@ module MOTranslation {
 
         
 
-        funcdef fids_to_moLocusIds(list<fid>) returns (mapping<fid,moLocusId>);
+        funcdef fids_to_moLocusIds(list<fid> fids) returns (mapping<fid,moLocusId>);
 
-        funcdef moLocusIds_to_fids(list<moLocusId>) returns (mapping<moLocusId,fid>);
+        funcdef moLocusIds_to_fids(list<moLocusId> moLocusIds) returns (mapping<moLocusId,fid>);
 
 };
