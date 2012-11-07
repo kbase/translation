@@ -1,13 +1,27 @@
-    /* 'misspelling', 'genbank anamorph', 'scientific name', 'synonym' */
-    /* 'blast name', 'genbank synonym', 'equivalent name', 'includes' */
-    /* 'acronym', 'in-part', 'anamorph', 'authority', 'genbank common name' */
-    /* 'genbank acronym', 'common name', 'misnomer', 'teleomorph' */
+/*	The translation service translates between different things. These are mainly
+	mappings. A genbank taxonomic scientific name to a genbank taxonomic common
+	name; A Seed role to a Geneontology term; MORE 
 
-module NameTranslation {
+	Genbank taxonomic name translations.
+
+	Genbank taxonomic name translations allow on the fly translation between
+	the different name classes supported in the NCBI taxonomy database. These
+	name classes include:
+
+		misspelling, genbank anamorph, scientific name, synonym 
+		blast name, genbank synonym, equivalent name, includes 
+		acronym, in-part, anamorph, authority, genbank common name 
+		genbank acronym, common name, misnomer, teleomorph 
+
+	Although, the most common are translations between scientific name, synonym,
+	equivelant name and common name.
+
+*/
+module TaxonomyTranslation {
     typedef string Name;
     typedef int Tax_id;
 
-    typedef structure {
+/*    typedef structure {
         string scientific_name;
         list<string> common_names;
         list<string> synonyms;
@@ -26,7 +40,10 @@ module NameTranslation {
         list<string> genbank_acronyms;
         list<string> genbank_common_names;
     } Names;
-
+*/
+typedef structure {
+	string t;
+} Names;
     typedef mapping<Tax_id tax_id, Names names> Translations;
 
     /* Returns all possible name translations for a given name. */
@@ -49,4 +66,6 @@ module NameTranslation {
     
     /* Returns a list of names for a given tax id. */
     funcdef get_all_names_by_tax_id(Tax_id tax_id) returns (list<Name> names);
+
+
 };
