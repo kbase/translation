@@ -1,0 +1,59 @@
+use strict;
+use Data::Dumper;
+
+use FindBin;
+use lib "$FindBin::Bin/../lib/";
+use Bio::KBase::translation::NameTranslationClient;
+
+
+my $client = NameTranslationClient->new("http://localhost:5000");
+
+#get_all_translations()
+
+print "get_all_translations()\n";
+my $result = $client->get_all_translations('Escherichia coli str. K-12 substr. MG1655');
+#my $result = $client->get_all_translations("Zygomycota");
+print Dumper($result) . "\n";
+
+print "get_scientific_names_by_name()\n";
+$result = $client->get_scientific_names_by_name('Escherichia coli MG1655');
+print Dumper($result) . "\n";
+
+print "get_all_names_by_name()\n";
+$result = $client->get_all_names_by_name('Escherichia coli MG1655');
+print Dumper($result) . "\n";
+
+print "get_scientific_name_by_tax_id()\n";
+$result = $client->get_scientific_name_by_tax_id(511145);
+print Dumper($result) . "\n";
+
+print "get_tax_id_by_scientific_name()\n";
+$result = $client->get_tax_id_by_scientific_name('Escherichia coli str. K-12 substr. MG1655');
+print Dumper($result) . "\n";
+
+print "get_tax_ids_by_name()\n";
+$result = $client->get_tax_ids_by_name('Escherichia coli MG1655');
+print Dumper($result) . "\n";
+
+print "get_all_names_by_tax_id()\n";
+$result = $client->get_all_names_by_tax_id(511145);
+print Dumper($result) . "\n";
+
+
+#bad input tests
+print "bad input test get_all_names_by_tax_id('stuff')\n";
+$result = $client->get_all_names_by_tax_id('stuff');
+print Dumper($result) . "\n";
+
+print "bad input test get_all_names_by_tax_id(-1)\n";
+$result = $client->get_all_names_by_tax_id(-1);
+print Dumper($result) . "\n";
+
+print "bad input test get_all_names_by_name('stuff')\n";
+$result = $client->get_all_names_by_name('stuff');
+print Dumper($result) . "\n";
+
+print "bad input test get_all_names_by_name(0)\n";
+$result = $client->get_all_names_by_name(0);
+print Dumper($result) . "\n";
+
