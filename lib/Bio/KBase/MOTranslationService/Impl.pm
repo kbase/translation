@@ -188,7 +188,7 @@ sub proteins_to_moLocusIds
 	my $sql='SELECT aaMD5,locusId FROM Locus2MD5 WHERE aaMD5 IN (';
 	my $placeholders='?,' x (scalar @$proteins);
 	chop $placeholders;
-	$sql.=$placeholders;
+	$sql.=$placeholders.')';
 
 	my $return=$moDbh->selectall_hashref($sql,'aaMD5',undef,@$proteins);
 
