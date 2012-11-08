@@ -23,6 +23,10 @@ data types are natively stored in KBase
 =cut
 
 #BEGIN_HEADER
+
+use Bio::KBase;
+use DBI;
+
 #END_HEADER
 
 sub new
@@ -32,6 +36,11 @@ sub new
     };
     bless $self, $class;
     #BEGIN_CONSTRUCTOR
+
+	my $kb = Bio::KBase->new();
+	my $moDbh=DBI->connect("DBI:mysql:genomics:pub.microbesonline.org",'guest','guest');
+	$self->{moDbh}=$moDbh;
+
     #END_CONSTRUCTOR
 
     if ($self->can('_init_instance'))
