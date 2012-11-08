@@ -113,6 +113,7 @@ sub fids_to_moLocusIds
     my($return);
     #BEGIN fids_to_moLocusIds
 
+	my $kb=$self->{kb};
 	my $f2proteins=$kb->fids_to_proteins($fids);
 	my $p2mo=$self->proteins_to_moLocusIds(values %{$f2proteins});
 
