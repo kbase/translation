@@ -338,6 +338,22 @@ sub moLocusIds_to_proteins
     my $ctx = $Bio::KBase::MOTranslationService::Service::CallContext;
     my($return);
     #BEGIN moLocusIds_to_proteins
+
+	my $moDbh=$self->{moDbh};
+
+	my $sql='SELECT DISTINCT locusId,aaMD5 FROM Locus2MD5 WHERE locusId IN (';
+	my $placeholders='?,' x (scalar @$moLocusIds);
+	chop $placeholders;
+	$sql.=$placeholders.')';
+
+	$return={};
+	my $sth=$moDbh->prepare($sql);
+	$sth->execute(@$moLocusIds);
+	while (my $row=$sth->fetch)
+	{
+		$return->{$row->[0]}=$row->[1];
+	}
+
     #END moLocusIds_to_proteins
     my @_bad_returns;
     (ref($return) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return\" (value was \"$return\")");
