@@ -40,7 +40,7 @@ sub new
     #BEGIN_CONSTRUCTOR
 
 #	my $kb = Bio::KBase->new();
-	my $cdmi = Bio::KBase::CDMI::CDMIClient->new
+	my $cdmi = Bio::KBase::CDMI::CDMIClient->new;
 	my $moDbh=DBI->connect("DBI:mysql:genomics:pub.microbesonline.org",'guest','guest');
 	$self->{moDbh}=$moDbh;
 	$self->{cdmi}=$cdmi;
