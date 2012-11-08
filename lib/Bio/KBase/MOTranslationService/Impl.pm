@@ -26,6 +26,7 @@ not be publicized, and mainly used internally by other KBase services
 #BEGIN_HEADER
 
 use Bio::KBase;
+use Bio::KBase::CDMI::CDMIClient;
 use DBI;
 
 #END_HEADER
@@ -38,10 +39,11 @@ sub new
     bless $self, $class;
     #BEGIN_CONSTRUCTOR
 
-	my $kb = Bio::KBase->new();
+#	my $kb = Bio::KBase->new();
+	my $cdmi = Bio::KBase::CDMI::CDMIClient->new
 	my $moDbh=DBI->connect("DBI:mysql:genomics:pub.microbesonline.org",'guest','guest');
 	$self->{moDbh}=$moDbh;
-	$self->{kb}=$kb;
+	$self->{cdmi}=$cdmi;
 
     #END_CONSTRUCTOR
 
@@ -113,8 +115,8 @@ sub fids_to_moLocusIds
     my($return);
     #BEGIN fids_to_moLocusIds
 
-	my $kb=$self->{kb};
-	my $f2proteins=$kb->fids_to_proteins($fids);
+	my $cdmi=$self->{cdmi};
+	my $f2proteins=$cdmi->fids_to_proteins($fids);
 	my $p2mo=$self->proteins_to_moLocusIds(values %{$f2proteins});
 
 	foreach my $fid (keys ${$f2proteins})
