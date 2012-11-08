@@ -190,7 +190,7 @@ sub proteins_to_moLocusIds
 	chop $placeholders;
 	$sql.=$placeholders;
 
-	my $return=$dbh->selectall_hashref($sql,'aaMD5',undef,@$proteins);
+	my $return=$moDbh->selectall_hashref($sql,'aaMD5',undef,@$proteins);
 
     #END proteins_to_moLocusIds
     my @_bad_returns;
