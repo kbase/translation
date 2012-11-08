@@ -112,6 +112,15 @@ sub fids_to_moLocusIds
     my $ctx = $Bio::KBase::MOTranslationService::Service::CallContext;
     my($return);
     #BEGIN fids_to_moLocusIds
+
+	my $f2proteins=$kb->fids_to_proteins($fids);
+	my $p2mo=$self->proteins_to_moLocusIds(values %{$f2proteins});
+
+	foreach my $fid (keys ${$f2proteins})
+	{
+		$return->{$fid}=$p2mo->{$f2proteins->{$fid}};
+	}
+
     #END fids_to_moLocusIds
     my @_bad_returns;
     (ref($return) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return\" (value was \"$return\")");
