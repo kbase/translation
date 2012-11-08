@@ -117,7 +117,7 @@ sub fids_to_moLocusIds
 
 	my $cdmi=$self->{cdmi};
 	my $f2proteins=$cdmi->fids_to_proteins($fids);
-	my $p2mo=$self->proteins_to_moLocusIds(values %{$f2proteins});
+	my $p2mo=$self->proteins_to_moLocusIds(\(values %{$f2proteins}));
 
 	foreach my $fid (keys ${$f2proteins})
 	{
