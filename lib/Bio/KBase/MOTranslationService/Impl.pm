@@ -120,7 +120,7 @@ sub fids_to_moLocusIds
 	my @proteins=values %{$f2proteins};
 	my $p2mo=$self->proteins_to_moLocusIds(\@proteins);
 
-	foreach my $fid (keys ${$f2proteins})
+	foreach my $fid (keys %{$f2proteins})
 	{
 		$return->{$fid}=$p2mo->{$f2proteins->{$fid}};
 	}
