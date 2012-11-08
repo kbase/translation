@@ -40,6 +40,7 @@ sub new
 	my $kb = Bio::KBase->new();
 	my $moDbh=DBI->connect("DBI:mysql:genomics:pub.microbesonline.org",'guest','guest');
 	$self->{moDbh}=$moDbh;
+	$self->{kb}=$kb;
 
     #END_CONSTRUCTOR
 
