@@ -185,12 +185,18 @@ sub proteins_to_moLocusIds
 
 	my $moDbh=$self->{moDbh};
 
-	my $sql='SELECT aaMD5,locusId FROM Locus2MD5 WHERE aaMD5 IN (';
+	my $sql='SELECT DISTINCT aaMD5,locusId FROM Locus2MD5 WHERE aaMD5 IN (';
 	my $placeholders='?,' x (scalar @$proteins);
 	chop $placeholders;
 	$sql.=$placeholders.')';
 
-	my $return=$moDbh->selectall_hashref($sql,'aaMD5',undef,@$proteins);
+	$return={};
+	my $sth=$moDbh->prepare($sql);
+	$sth->execute(@$proteins);
+	while (my $row=$sth->fetch)
+	{
+		push @{$return->{$row->[0]}},$row->[1];
+	}
 
     #END proteins_to_moLocusIds
     my @_bad_returns;
