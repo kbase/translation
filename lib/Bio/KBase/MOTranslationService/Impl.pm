@@ -1,4 +1,4 @@
-package MOTranslationImpl;
+package Bio::KBase::MOTranslationService::Impl;
 use strict;
 use Bio::KBase::Exceptions;
 # Use Semantic Versioning (2.0.0-rc.1)
@@ -108,7 +108,7 @@ sub fids_to_moLocusIds
 							       method_name => 'fids_to_moLocusIds');
     }
 
-    my $ctx = $MOTranslationServer::CallContext;
+    my $ctx = $Bio::KBase::MOTranslationService::Service::CallContext;
     my($return);
     #BEGIN fids_to_moLocusIds
     #END fids_to_moLocusIds
@@ -118,6 +118,80 @@ sub fids_to_moLocusIds
 	my $msg = "Invalid returns passed to fids_to_moLocusIds:\n" . join("", map { "\t$_\n" } @_bad_returns);
 	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
 							       method_name => 'fids_to_moLocusIds');
+    }
+    return($return);
+}
+
+
+
+
+=head2 proteins_to_moLocusIds
+
+  $return = $obj->proteins_to_moLocusIds($proteins)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$proteins is a reference to a list where each element is a protein
+$return is a reference to a hash where the key is a protein and the value is a moLocusId
+protein is a string
+moLocusId is an int
+
+</pre>
+
+=end html
+
+=begin text
+
+$proteins is a reference to a list where each element is a protein
+$return is a reference to a hash where the key is a protein and the value is a moLocusId
+protein is a string
+moLocusId is an int
+
+
+=end text
+
+
+
+=item Description
+
+
+
+=back
+
+=cut
+
+sub proteins_to_moLocusIds
+{
+    my $self = shift;
+    my($proteins) = @_;
+
+    my @_bad_arguments;
+    (ref($proteins) eq 'ARRAY') or push(@_bad_arguments, "Invalid type for argument \"proteins\" (value was \"$proteins\")");
+    if (@_bad_arguments) {
+	my $msg = "Invalid arguments passed to proteins_to_moLocusIds:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'proteins_to_moLocusIds');
+    }
+
+    my $ctx = $Bio::KBase::MOTranslationService::Service::CallContext;
+    my($return);
+    #BEGIN proteins_to_moLocusIds
+
+	my $moDbh=$self->{moDbh};
+
+
+    #END proteins_to_moLocusIds
+    my @_bad_returns;
+    (ref($return) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return\" (value was \"$return\")");
+    if (@_bad_returns) {
+	my $msg = "Invalid returns passed to proteins_to_moLocusIds:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'proteins_to_moLocusIds');
     }
     return($return);
 }
@@ -178,7 +252,7 @@ sub moLocusIds_to_fids
 							       method_name => 'moLocusIds_to_fids');
     }
 
-    my $ctx = $MOTranslationServer::CallContext;
+    my $ctx = $Bio::KBase::MOTranslationService::Service::CallContext;
     my($return);
     #BEGIN moLocusIds_to_fids
     #END moLocusIds_to_fids
@@ -188,6 +262,76 @@ sub moLocusIds_to_fids
 	my $msg = "Invalid returns passed to moLocusIds_to_fids:\n" . join("", map { "\t$_\n" } @_bad_returns);
 	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
 							       method_name => 'moLocusIds_to_fids');
+    }
+    return($return);
+}
+
+
+
+
+=head2 moLocusIds_to_proteins
+
+  $return = $obj->moLocusIds_to_proteins($moLocusIds)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$moLocusIds is a reference to a list where each element is a moLocusId
+$return is a reference to a hash where the key is a moLocusId and the value is a protein
+moLocusId is an int
+protein is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$moLocusIds is a reference to a list where each element is a moLocusId
+$return is a reference to a hash where the key is a moLocusId and the value is a protein
+moLocusId is an int
+protein is a string
+
+
+=end text
+
+
+
+=item Description
+
+
+
+=back
+
+=cut
+
+sub moLocusIds_to_proteins
+{
+    my $self = shift;
+    my($moLocusIds) = @_;
+
+    my @_bad_arguments;
+    (ref($moLocusIds) eq 'ARRAY') or push(@_bad_arguments, "Invalid type for argument \"moLocusIds\" (value was \"$moLocusIds\")");
+    if (@_bad_arguments) {
+	my $msg = "Invalid arguments passed to moLocusIds_to_proteins:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'moLocusIds_to_proteins');
+    }
+
+    my $ctx = $Bio::KBase::MOTranslationService::Service::CallContext;
+    my($return);
+    #BEGIN moLocusIds_to_proteins
+    #END moLocusIds_to_proteins
+    my @_bad_returns;
+    (ref($return) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return\" (value was \"$return\")");
+    if (@_bad_returns) {
+	my $msg = "Invalid returns passed to moLocusIds_to_proteins:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'moLocusIds_to_proteins');
     }
     return($return);
 }
@@ -242,7 +386,10 @@ sub version {
 =item Description
 
 protein is an MD5 in KBase-that is what we will
-look up in MO
+look up in MO -- the other methods should use the protein
+methods internally
+e.g., fids_to_moLocusIds will get the MD5 of each fid, then
+call proteins_to_moLocusIds
 
 
 =item Definition

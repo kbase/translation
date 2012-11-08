@@ -6,7 +6,8 @@ should return as an <externalDb,externalId> tuple, using
 MO for scaffolds and MOL:Feature for locusIds
 
 the MOTranslation module will eventually be deprecated once all MO
-data types are natively stored in KBase
+data types are natively stored in KBase, so in general should
+not be publicized, and mainly used internally by other KBase services
 */
 
 
@@ -28,10 +29,10 @@ module MOTranslation {
 
         
 
-        funcdef fids_to_moLocusIds(list<fid> fids) returns (mapping<fid,moLocusId>);
-        funcdef proteins_to_moLocusIds(list<protein> proteins) returns (mapping<protein,moLocusId>);
+        funcdef fids_to_moLocusIds(list<fid> fids) returns (mapping<fid,list<moLocusId>>);
+        funcdef proteins_to_moLocusIds(list<protein> proteins) returns (mapping<protein,list<moLocusId>>);
 
-        funcdef moLocusIds_to_fids(list<moLocusId> moLocusIds) returns (mapping<moLocusId,fid>);
-        funcdef moLocusIds_to_proteins(list<moLocusId> moLocusIds) returns (mapping<moLocusId,protein>);
+        funcdef moLocusIds_to_fids(list<moLocusId> moLocusIds) returns (mapping<moLocusId,list<fid>>);
+        funcdef moLocusIds_to_proteins(list<moLocusId> moLocusIds) returns (mapping<moLocusId,list<protein>>);
 
 };
