@@ -18,7 +18,8 @@ should return as an <externalDb,externalId> tuple, using
 MO for scaffolds and MOL:Feature for locusIds
 
 the MOTranslation module will eventually be deprecated once all MO
-data types are natively stored in KBase
+data types are natively stored in KBase, so in general should
+not be publicized, and mainly used internally by other KBase services
 
 =cut
 
@@ -67,7 +68,7 @@ sub new
 
 <pre>
 $fids is a reference to a list where each element is a fid
-$return is a reference to a hash where the key is a fid and the value is a moLocusId
+$return is a reference to a hash where the key is a fid and the value is a reference to a list where each element is a moLocusId
 fid is a string
 moLocusId is an int
 
@@ -78,7 +79,7 @@ moLocusId is an int
 =begin text
 
 $fids is a reference to a list where each element is a fid
-$return is a reference to a hash where the key is a fid and the value is a moLocusId
+$return is a reference to a hash where the key is a fid and the value is a reference to a list where each element is a moLocusId
 fid is a string
 moLocusId is an int
 
@@ -137,7 +138,7 @@ sub fids_to_moLocusIds
 
 <pre>
 $proteins is a reference to a list where each element is a protein
-$return is a reference to a hash where the key is a protein and the value is a moLocusId
+$return is a reference to a hash where the key is a protein and the value is a reference to a list where each element is a moLocusId
 protein is a string
 moLocusId is an int
 
@@ -148,7 +149,7 @@ moLocusId is an int
 =begin text
 
 $proteins is a reference to a list where each element is a protein
-$return is a reference to a hash where the key is a protein and the value is a moLocusId
+$return is a reference to a hash where the key is a protein and the value is a reference to a list where each element is a moLocusId
 protein is a string
 moLocusId is an int
 
@@ -184,6 +185,12 @@ sub proteins_to_moLocusIds
 
 	my $moDbh=$self->{moDbh};
 
+	my $sql='SELECT aaMD5,locusId FROM Locus2MD5 WHERE aaMD5 IN (';
+	my $placeholders='?,' x (scalar @$proteins);
+	chop $placeholders;
+	$sql.=$placeholders;
+
+	my $return=$dbh->selectall_hashref($sql,'aaMD5',undef,@$proteins);
 
     #END proteins_to_moLocusIds
     my @_bad_returns;
@@ -211,7 +218,7 @@ sub proteins_to_moLocusIds
 
 <pre>
 $moLocusIds is a reference to a list where each element is a moLocusId
-$return is a reference to a hash where the key is a moLocusId and the value is a fid
+$return is a reference to a hash where the key is a moLocusId and the value is a reference to a list where each element is a fid
 moLocusId is an int
 fid is a string
 
@@ -222,7 +229,7 @@ fid is a string
 =begin text
 
 $moLocusIds is a reference to a list where each element is a moLocusId
-$return is a reference to a hash where the key is a moLocusId and the value is a fid
+$return is a reference to a hash where the key is a moLocusId and the value is a reference to a list where each element is a fid
 moLocusId is an int
 fid is a string
 
