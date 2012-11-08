@@ -1,6 +1,7 @@
 /*
-This module will translate KBase ids to MicrobesOnline locusIds,
-initially using MD5s.
+This module will translate KBase ids to MicrobesOnline ids and
+vice-versa. For features, it will initially use MD5s to perform
+the translation.
 
 The MOTranslation module will ultimately be deprecated, once all
 MicrobesOnline data types are natively stored in KBase. In general
