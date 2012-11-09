@@ -196,19 +196,23 @@ sub proteins_to_moLocusIds
     my($return);
     #BEGIN proteins_to_moLocusIds
 
-	my $moDbh=$self->{moDbh};
-
-	my $sql='SELECT DISTINCT aaMD5,locusId FROM Locus2MD5 WHERE aaMD5 IN (';
-	my $placeholders='?,' x (scalar @$proteins);
-	chop $placeholders;
-	$sql.=$placeholders.')';
-
 	$return={};
-	my $sth=$moDbh->prepare($sql);
-	$sth->execute(@$proteins);
-	while (my $row=$sth->fetch)
+
+	if (scalar @$proteins)
 	{
-		push @{$return->{$row->[0]}},$row->[1];
+		my $moDbh=$self->{moDbh};
+
+		my $sql='SELECT DISTINCT aaMD5,locusId FROM Locus2MD5 WHERE aaMD5 IN (';
+		my $placeholders='?,' x (scalar @$proteins);
+		chop $placeholders;
+		$sql.=$placeholders.')';
+
+		my $sth=$moDbh->prepare($sql);
+		$sth->execute(@$proteins);
+		while (my $row=$sth->fetch)
+		{
+			push @{$return->{$row->[0]}},$row->[1];
+		}
 	}
 
     #END proteins_to_moLocusIds
@@ -363,19 +367,23 @@ sub moLocusIds_to_proteins
     my($return);
     #BEGIN moLocusIds_to_proteins
 
-	my $moDbh=$self->{moDbh};
-
-	my $sql='SELECT DISTINCT locusId,aaMD5 FROM Locus2MD5 WHERE locusId IN (';
-	my $placeholders='?,' x (scalar @$moLocusIds);
-	chop $placeholders;
-	$sql.=$placeholders.')';
-
 	$return={};
-	my $sth=$moDbh->prepare($sql);
-	$sth->execute(@$moLocusIds);
-	while (my $row=$sth->fetch)
+
+	if (scalar @$moLocusIds)
 	{
-		$return->{$row->[0]}=$row->[1];
+		my $moDbh=$self->{moDbh};
+
+		my $sql='SELECT DISTINCT locusId,aaMD5 FROM Locus2MD5 WHERE locusId IN (';
+		my $placeholders='?,' x (scalar @$moLocusIds);
+		chop $placeholders;
+		$sql.=$placeholders.')';
+
+		my $sth=$moDbh->prepare($sql);
+		$sth->execute(@$moLocusIds);
+		while (my $row=$sth->fetch)
+		{
+			$return->{$row->[0]}=$row->[1];
+		}
 	}
 
     #END moLocusIds_to_proteins
