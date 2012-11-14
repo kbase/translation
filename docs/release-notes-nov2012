@@ -1,0 +1,10 @@
+The MO translation component of the translation service translates
+KBase ids to MicrobesOnline ids and vice-versa.  These methods are
+used to retrieve MicrobesOnline annotations for KBase objects.
+
+The MO translation service can currently translate between KBase
+fids which are proteins (i.e., have MD5s)  and MicrobesOnline locusIds.
+It has a client API and documentation as part of the typespec.
+
+Future releases should try to include methods to translate other objects
+such as contigs, genomes, and/or noncoding fids (e.g., RNAs, CRISPRs).
