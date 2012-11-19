@@ -6,7 +6,7 @@ TARGET ?= /kb/deployment
 
 SERVER_SPEC = motranslation.spec
 SERVICE = motranslation_service
-SERVICE_PORT = 5000
+SERVICE_PORT = 7061
 
 # MOD is the prefix of your automatically generated psgi file. It will always be 
 # <Something>Service.
