@@ -115,6 +115,7 @@ sub fids_to_moLocusIds
     my($return);
     #BEGIN fids_to_moLocusIds
 
+	$return={};
 	my $cdmi=$self->{cdmi};
 	my $f2proteins=$cdmi->fids_to_proteins($fids);
 	my @proteins=values %{$f2proteins};
