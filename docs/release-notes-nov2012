@@ -8,3 +8,4 @@ It has a client API and documentation as part of the typespec.
 
 Future releases should try to include methods to translate other objects
 such as contigs, genomes, and/or noncoding fids (e.g., RNAs, CRISPRs).
+More tests are also needed.
