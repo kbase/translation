@@ -57,13 +57,21 @@ test: test-client test-scripts
 test-all: test-server test-client test-scripts
 
 test-client:
-	$(DEPLOY_RUNTIME)/bin/perl $(TOP_DIR)/modules/$(SERVICE)/t/client-tests/testBasicResponses.t
+        # run each test
+        for t in $(CLIENT_TESTS) ; do \
+                if [ -f $$t ] ; then \
+                        $(DEPLOY_RUNTIME)/bin/perl $$t ; \
+                        if [ $$? -ne 0 ] ; then \
+                                exit 1 ; \
+                        fi \
+                fi \
+        done
 
 test-scripts:
 	echo "scripts are not yet ready to be tested."
 
 test-server:
-	#$(DEPLOY_RUNTIME)/bin/perl $(TOP_DIR)/modules/$(SERVICE)/t/server-tests/testServerUp.t
+	echo "server does not currently have any tests."
 
 
 # here are the standard KBase deployment targets (deploy, deploy-all, deploy-client, deploy-scripts, & deploy-server)
