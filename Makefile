@@ -11,6 +11,10 @@ TOP_DIR = ../..
 DEPLOY_RUNTIME ?= /kb/runtime
 TARGET ?= /kb/deployment
 
+CLIENT_TESTS = $(wildcard client-tests/*.t)
+SCRIPTS_TESTS = $(wildcard script-tests/*.t)
+SERVER_TESTS = $(wildcard server-tests/*.t)
+
 #for the reboot_service script, we need to get a path to dev_container/modules/"module_name".  We can do this simply
 #by getting the absolute path to this makefile.  Note that very old versions of make might not support this line.
 ROOT_DEV_MODULE_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
