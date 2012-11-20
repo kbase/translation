@@ -1,5 +1,7 @@
 # configurable variables 
-SERVICE = motranslation_service
+# SERVICE is the git module name
+SERVICE = translation
+# SERVICE_NAME is the name of the language libs
 SERVICE_NAME = MOTranslationService
 SERVICE_PSGI_FILE = MOTranslationService.psgi
 SERVICE_PORT = 7061
