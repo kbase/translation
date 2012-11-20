@@ -57,15 +57,15 @@ test: test-client test-scripts
 test-all: test-server test-client test-scripts
 
 test-client:
-        # run each test
-        for t in $(CLIENT_TESTS) ; do \
-                if [ -f $$t ] ; then \
-                        $(DEPLOY_RUNTIME)/bin/perl $$t ; \
-                        if [ $$? -ne 0 ] ; then \
-                                exit 1 ; \
-                        fi \
-                fi \
-        done
+	# run each test
+	for t in $(CLIENT_TESTS) ; do \
+		if [ -f $$t ] ; then \
+			$(DEPLOY_RUNTIME)/bin/perl $$t ; \
+			if [ $$? -ne 0 ] ; then \
+				exit 1 ; \
+			fi \
+		fi \
+	done
 
 test-scripts:
 	echo "scripts are not yet ready to be tested."
