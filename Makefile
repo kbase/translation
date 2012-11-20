@@ -97,7 +97,8 @@ deploy-server-libs:
 	mkdir -p $(TARGET)/lib/Bio/KBase/$(SERVICE_NAME)
 	cp lib/Bio/KBase/$(SERVICE_NAME)/Service.pm $(TARGET)/lib/Bio/KBase/$(SERVICE_NAME)/.
 	cp $(TOP_DIR)/modules/$(SERVICE)/lib/Bio/KBase/$(SERVICE_NAME)/Impl.pm $(TARGET)/lib/Bio/KBase/$(SERVICE_NAME)/.
-	cp $(TOP_DIR)/modules/$(SERVICE)/lib/Bio/KBase/$(SERVICE_NAME)/Util.pm $(TARGET)/lib/Bio/KBase/$(SERVICE_NAME)/.
+# no Util.pm file
+#	cp $(TOP_DIR)/modules/$(SERVICE)/lib/Bio/KBase/$(SERVICE_NAME)/Util.pm $(TARGET)/lib/Bio/KBase/$(SERVICE_NAME)/.
 	cp $(TOP_DIR)/modules/$(SERVICE)/lib/$(SERVICE_PSGI_FILE) $(TARGET)/lib/.
 	mkdir -p $(SERVICE_DIR)
 	echo "deployed server for $(SERVICE)."
