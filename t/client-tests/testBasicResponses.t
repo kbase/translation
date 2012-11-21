@@ -25,10 +25,10 @@ use lib "$FindBin::Bin/..";
 # HERE IS A LIST OF METHODS AND PARAMETERS THAT WE WANT TO TEST
 # NOTE THAT THE PARAMETERS ARE JUST MADE UP AT THE MOMENT
 my $func_calls = {
-       fids_to_moLocusIds  => ["((a,b)c);"],
-       proteins_to_moLocusIds => ["((a,b)c);"],
-       moLocusIds_to_fids     => ["((a,b)c);"],
-       moLocusIds_to_proteins => ["((a,b)c);"],
+       fids_to_moLocusIds  =>     [ ["kb|g.fake"]],
+       proteins_to_moLocusIds =>  [ ["kb|g.fake"]],
+       moLocusIds_to_fids     =>  [ ["kb|g.fake"]],
+       moLocusIds_to_proteins =>  [ ["kb|g.fake"]],
                  };
 #############################################################################
 my $n_tests = (scalar(keys %$func_calls)+3); # set this to be the number of function calls + 3
@@ -67,9 +67,12 @@ for $method_name (keys %$func_calls) {
         print "calling function: \"$method_name\"\n";
         {
             no strict "refs";
-            $result = $client->$method_name(@{ $func_calls->{$method_name}});
+            eval { $result = $client->$method_name(@{ $func_calls->{$method_name}}); };
         }
+	if ($@) { print "ERROR=$@\n"; }
         ok($result,"looking for a response from \"$method_name\"");
 }
+
+Server::stop($pid);
 
 done_testing($n_tests);
