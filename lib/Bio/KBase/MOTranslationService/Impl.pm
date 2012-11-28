@@ -41,7 +41,7 @@ sub new
 
 #	my $kb = Bio::KBase->new();
 	my $cdmi = Bio::KBase::CDMI::CDMIClient->new;
-	my $moDbh=DBI->connect("DBI:mysql:genomics:pub.microbesonline.org",'guest','guest');
+	my $moDbh=DBI->connect("DBI:mysql:genomics:db1.chicago.kbase.us",'genomics');
 	$self->{moDbh}=$moDbh;
 	$self->{cdmi}=$cdmi;
 
