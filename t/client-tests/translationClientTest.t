@@ -1,5 +1,17 @@
 #!/usr/bin/perl
 
+###############################################################################
+# Client tests for the MicrobesOnline Translation Service
+#
+# This sets up a server using Server.pm, runs a series of both happy (good,
+# well-formed data) and unhappy tests, then shuts down the server.
+#
+# Bill Riehl
+# wjriehl@lbl.gov
+# November 27, 2012
+# November Build Meeting @ Argonne
+###############################################################################
+
 use strict;
 use warnings;
 
@@ -32,69 +44,89 @@ ok(defined($client), "instantiating MOTranslationService client");
 $num_tests++;
 
 ##########
-# Set up variables and data inputs for happy tests.
+# Set up variables and data inputs for tests.
 my @kb_protein_md5s = qw(cf87188c893421a9a13c9300b1c3cd68 a13c9b9f465cbb30682448c255b27d3d);
 my @kb_fids = qw(kb|g.20029.peg.3202 kb|g.20029.peg.2255);
 my @mo_locus_ids = qw(208945 7704787);
 
-my $happy_calls = {
-	fids_to_moLocusIds => \@kb_fids,
-	proteins_to_moLocusIds => \@kb_protein_md5s,
-	moLocusIds_to_fids => \@mo_locus_ids,
-	moLocusIds_to_proteins => \@mo_locus_ids
+my $method_calls = {
+	fids_to_moLocusIds => {
+		happy => \@kb_fids,
+		empty => [[]],
+		bad => [['bad data']]
+		},
+	proteins_to_moLocusIds => {
+		happy => \@kb_protein_md5s,
+		empty => [[]],
+		bad => [['bad data']]
+		},
+	moLocusIds_to_fids => {
+		happy => \@mo_locus_ids,
+		empty => [[]],
+		bad => [['bad data']]
+		},
+	moLocusIds_to_proteins => {
+		happy => \@mo_locus_ids,
+		empty => [[]],
+		bad => [['bad data']]
+		}
 	};
 
-
-##########
-# Run happy tests.
+###############################################################################
+# Run tests.
 print "Running tests with valid data.\n";
 
-foreach my $call (keys %{ $happy_calls }) {
+foreach my $call (keys %{ $method_calls }) {
 	my $result;
-	print "calling function \"$call\"\n";
+	print "Testing function \"$call\"\n";
 	{
 		no strict "refs";
-		eval { $result = $client->$call($happy_calls->{$call}); };
+		eval { $result = $client->$call($method_calls->{$call}->{happy}); };
 	}
+	
 	if ($@) { print "ERROR = $@\n"; }
-	ok($result, "Got a response from \"$call\"");
+	
+	## 1. Test if we got a result of any kind from the method call.
+	ok($result, "Got a response from \"$call\" with happy data");
 	$num_tests++;	
 	# this works because we're only passing an array ref for each method,
 	# so don't copy this bit to other modules...
 
-	ok(scalar(@{ $happy_calls->{$call} }) == scalar(keys %{ $result }), "\"$call\" returned the same number of elements that was passed");
+	## 2. Test that we got the number of elements in the result that we expect.
+	# (this works because we're only passing an array ref for each method,
+        # so don't copy this bit to other modules...)
+	ok(scalar(@{ $method_calls->{$call}->{happy} }) == scalar(keys %{ $result }), "\"$call\" returned the same number of elements that was passed");
 	$num_tests++;
 	
+	## 3. Test that the elements returned are the correct values.
+	# (we don't really care about the actual values of the calls)
 	my @keys = keys %{ $result };
-	cmp_set(\@keys, $happy_calls->{$call}, "\"$call\" returned the correct set of elements");
+	cmp_set(\@keys, $method_calls->{$call}->{happy}, "\"$call\" returned the correct set of elements");
+	$num_tests++;
+
+	## 4. Test with empty (but correctly formatted) values.
+	{
+		no strict "refs";
+		eval { $result = $client->$call($method_calls->{$call}->{empty}); }
+	}
+	if ($@) { print "ERROR = $@\n"; }
+	ok($result, "Got a response from \"$call\" with empty input");
+	$num_tests++;
+
+	## 5. Test with bad (but correctly formatted) data.
+	{
+		no strict "refs";
+		eval { $result = $client->$call($method_calls->{$call}->{bad}); }
+	}
+	if ($@) { print "ERROR = $@\n"; }
+	ok($result, "Got a response from \"$call\" with bad input");
 	$num_tests++;
 }
 
-#my $prot_locus_ids = $client->proteins_to_moLocusIds(\@kb_protein_md5s);
-#my $fid_locus_ids = $client->fids_to_moLocusIds(\@kb_fids);
-#my $locus_id_fids = $client->moLocusIds_to_fids(\@mo_locus_ids);
-#my $locus_id_prots = $client->moLocusIds_to_proteins(\@mo_locus_ids);
-
-##########
+###############################################################################
 # Shut down the service at the end.
 Server::stop($pid);
 print "Shutting down client\n";
 
 done_testing($num_tests);
-
-__END__
-
-my $kbClient=Bio::KBase::MOTranslationService::Client->new("http://localhost:7061");
-
-my $p2locusId=$kbClient->proteins_to_moLocusIds(["cf87188c893421a9a13c9300b1c3cd68","a13c9b9f465cbb30682448c255b27d3d","bork"]);
-warn Dumper($p2locusId);
-
-#my $f2locusId=$kbClient->fids_to_moLocusIds(['kb|g.20029.peg.3202','bork']);
-#warn Dumper($f2locusId);
-
-my $locusId2md5=$kbClient->moLocusIds_to_proteins([208945,7704787]);
-warn Dumper($locusId2md5);
-
-my $locusId2fids=$kbClient->moLocusIds_to_fids([208945,7704787]);
-warn Dumper($locusId2fids);
 
