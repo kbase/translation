@@ -27,7 +27,7 @@ info service).
 
 use Bio::KBase;
 use Bio::KBase::CDMI::CDMIClient;
-use DBI;
+use DBKernel;
 
 #END_HEADER
 
@@ -41,7 +41,18 @@ sub new
 
 #	my $kb = Bio::KBase->new();
 	my $cdmi = Bio::KBase::CDMI::CDMIClient->new;
-	my $moDbh=DBI->connect("DBI:mysql:genomics:db1.chicago.kbase.us",'genomics');
+
+#	my $moDbh=DBI->connect("DBI:mysql:genomics:db1.chicago.kbase.us",'genomics');
+        my $dbms='mysql';
+        my $dbName='genomics';
+        my $user='genomics';
+        my $pass=undef;
+        my $port=3306;
+        my $dbhost='db1.chicago.kbase.us';
+        my $sock='';
+        my $dbKernel = DBKernel->new($dbms, $dbName, $user, $pass, $port, $dbhost, $sock);
+        my $moDbh=$dbKernel->{_dbh};
+
 	$self->{moDbh}=$moDbh;
 	$self->{cdmi}=$cdmi;
 
