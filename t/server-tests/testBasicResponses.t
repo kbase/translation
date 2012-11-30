@@ -9,17 +9,17 @@
 #
 #  author:  landml
 #  created: 11/21/2012
-#  updated :
+#  updated : 11/30/2012 - landml
 
 use strict;
 use warnings;
 
 use Data::Dumper;
 use Test::More;
-use lib "../lib/";
+use Bio::KBase::MOTranslationService::Client;
+use lib "t/server-tests";
+use TranslationTestConfig qw(getHost getPort);
 
-use FindBin;
-use lib "$FindBin::Bin/..";
 
 #############################################################################
 # HERE IS A LIST OF METHODS AND PARAMETERS THAT WE WANT TO TEST
@@ -41,16 +41,15 @@ use_ok("JSON::RPC::Client");
 use_ok("Bio::KBase::MOTranslationService::Client");
 
 # MAKE A CONNECTION (DETERMINE THE URL TO USE BASED ON THE CONFIG MODULE)
-#my $host=getHost(); my $port=getPort();
-#print "-> attempting to connect to:'".$host.":".$port."'\n";
-#my $client = Bio::KBase::MOTranslationService::Client->new($host.":".$port);
+my $host=getHost(); my $port=getPort();
+print "-> attempting to connect to:'".$host.":".$port."'\n";
+my $client  = Bio::KBase::MOTranslationService::Client->new($host.":".$port);
 
 #NEW VERSION WITH AUTO START / STOP SERVICE
-use lib "$FindBin::Bin/.";
-use Server;
-my ($pid, $url) = Server::start('MOTranslationService');
-print "-> attempting to connect to:'".$url."'\n";
-my $client = Bio::KBase::MOTranslationService::Client->new($url);
+#use Server;
+#my ($pid, $url) = Server::start('MOTranslationService');
+#print "-> attempting to connect to:'".$url."'\n";
+#my $client = Bio::KBase::MOTranslationService::Client->new($url);
 
 ok(defined($client),"instantiating MOTranslationService client");
 
@@ -73,6 +72,6 @@ for $method_name (keys %$func_calls) {
         ok($result,"looking for a response from \"$method_name\"");
 }
 
-Server::stop($pid);
+#Server::stop($pid);
 
 done_testing($n_tests);

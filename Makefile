@@ -75,7 +75,15 @@ test-scripts:
 	@echo "Scripts are not yet ready to be tested."
 
 test-service:
-	@echo "Server does not currently have any tests."
+	# run each test
+	for t in $(SERVER_TESTS) ; do \
+		if [ -f $$t ] ; then \
+			$(DEPLOY_RUNTIME)/bin/perl $$t ; \
+			if [ $$? -ne 0 ] ; then \
+				exit 1 ; \
+			fi \
+		fi \
+	done
 
 
 # here are the standard KBase deployment targets (deploy, deploy-all, deploy-client, deploy-scripts, & deploy-server)
