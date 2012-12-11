@@ -95,7 +95,7 @@ foreach my $call (keys %{ $method_calls }) {
 	## 2. Test that we got the number of elements in the result that we expect.
 	# (this works because we're only passing an array ref for each method,
         # so don't copy this bit to other modules...)
-	ok(scalar(@{ $method_calls->{$call}->{happy} }) == scalar(keys %{ $result }), "\"$call\" returned the same number of elements that was passed");
+	is(scalar(@{ $method_calls->{$call}->{happy} }), scalar(keys %{ $result }), "\"$call\" returned the same number of elements that was passed");
 	$num_tests++;
 	
 	## 3. Test that the elements returned are the correct values.
