@@ -11,15 +11,15 @@ MOTranslation
 
 =head1 DESCRIPTION
 
-this module will translate KBase ids to MO locusIds
-initially will use MD5s
+This module will translate KBase ids to MicrobesOnline ids and
+vice-versa. For features, it will initially use MD5s to perform
+the translation.
 
-should return as an <externalDb,externalId> tuple, using
-MO for scaffolds and MOL:Feature for locusIds
-
-the MOTranslation module will eventually be deprecated once all MO
-data types are natively stored in KBase, so in general should
-not be publicized, and mainly used internally by other KBase services
+The MOTranslation module will ultimately be deprecated, once all
+MicrobesOnline data types are natively stored in KBase. In general
+the module and methods should not be publicized, and are mainly intended
+to be used internally by other KBase services (specifically the protein
+info service).
 
 =cut
 
@@ -27,7 +27,7 @@ not be publicized, and mainly used internally by other KBase services
 
 use Bio::KBase;
 use Bio::KBase::CDMI::CDMIClient;
-use DBI;
+use DBKernel;
 
 #END_HEADER
 
@@ -41,7 +41,18 @@ sub new
 
 #	my $kb = Bio::KBase->new();
 	my $cdmi = Bio::KBase::CDMI::CDMIClient->new;
-	my $moDbh=DBI->connect("DBI:mysql:genomics:db1.chicago.kbase.us",'genomics');
+
+#	my $moDbh=DBI->connect("DBI:mysql:genomics:db1.chicago.kbase.us",'genomics');
+        my $dbms='mysql';
+        my $dbName='genomics';
+        my $user='genomics';
+        my $pass=undef;
+        my $port=3306;
+        my $dbhost='db1.chicago.kbase.us';
+        my $sock='';
+        my $dbKernel = DBKernel->new($dbms, $dbName, $user, $pass, $port, $dbhost, $sock);
+        my $moDbh=$dbKernel->{_dbh};
+
 	$self->{moDbh}=$moDbh;
 	$self->{cdmi}=$cdmi;
 
@@ -92,7 +103,8 @@ moLocusId is an int
 
 =item Description
 
-
+fids_to_moLocusIds translates a list of fids into MicrobesOnline
+locusIds. It uses proteins_to_moLocusIds internally.
 
 =back
 
@@ -174,7 +186,8 @@ moLocusId is an int
 
 =item Description
 
-
+proteins_to_moLocusIds translates a list of proteins (MD5s) into
+MicrobesOnline locusIds.
 
 =back
 
@@ -264,7 +277,8 @@ fid is a string
 
 =item Description
 
-
+moLocusIds_to_fids translates a list of MicrobesOnline locusIds
+into KBase fids. It uses moLocusIds_to_proteins internally.
 
 =back
 
@@ -346,7 +360,8 @@ protein is a string
 
 =item Description
 
-
+moLocusIds_to_proteins translates a list of MicrobesOnline locusIds
+into proteins (MD5s).
 
 =back
 
@@ -448,11 +463,8 @@ sub version {
 
 =item Description
 
-protein is an MD5 in KBase-that is what we will
-look up in MO -- the other methods should use the protein
-methods internally
-e.g., fids_to_moLocusIds will get the MD5 of each fid, then
-call proteins_to_moLocusIds
+protein is an MD5 in KBase. It is the primary lookup between
+KBase fids and MicrobesOnline locusIds.
 
 
 =item Definition
@@ -483,7 +495,9 @@ a string
 
 =item Description
 
-kbaseId is meant to represent a contig
+kbaseId can represent any object with a KBase identifier. 
+In the future this may be used to translate between other data
+types, such as contig or genome.
 
 
 =item Definition
@@ -514,7 +528,7 @@ a string
 
 =item Description
 
-fid is a feature id
+fid is a feature id in KBase.
 
 
 =item Definition
@@ -543,6 +557,12 @@ a string
 
 
 
+=item Description
+
+moLocusId is a locusId in MicrobesOnline. It is analogous to a fid
+in KBase.
+
+
 =item Definition
 
 =begin html
@@ -569,6 +589,12 @@ an int
 
 
 
+=item Description
+
+moScaffoldId is a scaffoldId in MicrobesOnline.  It is analogous to
+a contig kbId in KBase.
+
+
 =item Definition
 
 =begin html
@@ -593,6 +619,13 @@ an int
 
 =over 4
 
+
+
+=item Description
+
+moTaxonomyId is a taxonomyId in MicrobesOnline.  It is somewhat analogous
+to a genome kbId in KBase.  It generally stores the NCBI taxonomy ID,
+though sometimes can store an internal identifier instead.
 
 
 =item Definition
