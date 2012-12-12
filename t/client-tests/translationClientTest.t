@@ -18,12 +18,25 @@ use warnings;
 use Test::More;
 use Test::Deep;
 use Data::Dumper;
+use Getopt::Long;
 use lib "../lib";
 
 use FindBin;
 use lib "$FindBin::Bin/..";
 
 my $num_tests = 0;
+my $debug=0;
+my $localServer=0;
+my $uri='http://140.221.92.231/services/translation';
+my $serviceName='MOTranslationService';
+
+my $getoptResult=GetOptions(
+	'debug' =>      \$debug,
+	'localServer'   =>      \$localServer,
+	'uri=s'         =>      \$uri,
+	'serviceName=s' =>      \$serviceName,
+);
+
 
 ##########
 # Make sure we locally load up the client library and JSON RPC
@@ -36,7 +49,11 @@ $num_tests += 2;
 # Make an automatically started service.
 use lib "$FindBin::Bin/.";
 use Server;
-my ($pid, $url) = Server::start('MOTranslationService');
+my ($url,$pid);
+# would be good to extract the port from a config file or env variable
+$url=$uri unless ($localServer);
+# Start a server on localhost if desired
+($pid, $url) = Server::start($serviceName) unless ($url);
 print "-> attempting to connect to:'" . $url . "'\n";
 my $client = Bio::KBase::MOTranslationService::Client->new($url);
 
@@ -125,7 +142,7 @@ foreach my $call (keys %{ $method_calls }) {
 
 ###############################################################################
 # Shut down the service at the end.
-Server::stop($pid);
+Server::stop($pid) if ($pid);
 print "Shutting down client\n";
 
 done_testing($num_tests);
