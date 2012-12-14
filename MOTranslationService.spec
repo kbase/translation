@@ -67,4 +67,34 @@ module MOTranslation {
 	*/
         funcdef moLocusIds_to_proteins(list<moLocusId> moLocusIds) returns (mapping<moLocusId,protein>);
 
+
+        /*
+	proposed additions: (msneddon)
+	
+	A general method to lookup the best matching feature id in a specific genome for a given protein sequence.
+	This method should allow an incremental approach, for instance, exact MD5 is checked first, then
+	some heuristics, possibly ending with a blast run...  Could start out simply using Gavin's heuristic
+	matching algorithm if additional options are passed in, such as start and stop sites, or other genome
+	context information such as ordering in an operon.
+	
+	/* AA sequence of a protein */
+	typedef string protein_sequence;
+	/* internally consistant id of a protein (could just be integers 0..n)
+	typedef string protein_id;
+	typedef struct { protein_id id; protein_sequence seq; } query_sequences;
+	typedef struct { ??? to match exact only? to match with some parameters? provide additional data such as start positions ??? } options;
+	funcdef translate_to_fid(list<query_sequences>query_sequences, genome_id genome_id, options options) returns (mapping<protein_id,fid>);
+	
+	
+	A second method to get identical genomes.
+	funcdef find_identical_genome(string MD5) return (list <genome_id>);
+	
+	So the idea is first we map an external (or MO) genome to an identical genome.  If we can do that, then we can, by sequence,
+	map each protein sequence to a feature ID.
+	
+	
+	*/
+
+
+
 };
