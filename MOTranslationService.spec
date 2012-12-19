@@ -116,8 +116,7 @@ module MOTranslation {
 	matching algorithm if additional options are passed in, such as start and stop sites, or other genome
 	context information such as ordering in an operon.
 	*/
-	funcdef map_to_fid(list<query_sequence>query_sequences, genomeId genomeId)
-	                           returns (mapping<protein_id,result>);
+	funcdef map_to_fid(list<query_sequence>query_sequences, genomeId genomeId) returns (mapping<protein_id,result>, status log);
 	
 	
 	/* the less general method that we want for simplicity */
