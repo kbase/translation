@@ -4,7 +4,7 @@ SERVICE = translation
 # SERVICE_NAME is the name of the language libs
 SERVICE_NAME = MOTranslationService
 SERVICE_PSGI_FILE = MOTranslationService.psgi
-SERVICE_PORT = 7061
+SERVICE_PORT = 7062
 
 #standalone variables which are replaced when run via /kb/dev_container/Makefile
 TOP_DIR = ../..
