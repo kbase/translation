@@ -825,6 +825,32 @@ sub moTaxonomyId_to_genomes
     my $ctx = $Bio::KBase::MOTranslationService::Service::CallContext;
     my($return);
     #BEGIN moTaxonomyId_to_genomes
+
+    if ($moTaxonomyId ne "") {
+        my $mo_genome_md5s = ();
+
+        # query the Genome2MD5 table for matches
+        my $moDbh=$self->{moDbh};
+        my $sql = join "", 'SELECT DISTINCT genomeMD5 FROM Genome2MD5 WHERE taxonomyId=\'', $moTaxonomyId, '\'';
+        my $query_handle=$moDbh->prepare($sql);
+        $query_handle->execute();
+
+        # get each matching row
+        while (my $row=$query_handle->fetch()) {
+            push(@$mo_genome_md5s, $row->[0]);
+        }
+
+        # call KBase cdmi api to fetch genomes that match these MD5s
+        my $cdmi = $self->{cdmi};
+        my $genomes = $cdmi->md5s_to_genomes($mo_genome_md5s);
+
+        # transform results into a single list of KBase genome ids
+        $return = ();
+        foreach (values $genomes) {
+            push(@$return, $_->[0]);
+        }
+    }
+
     #END moTaxonomyId_to_genomes
     my @_bad_returns;
     (ref($return) eq 'ARRAY') or push(@_bad_returns, "Invalid type for return variable \"return\" (value was \"$return\")");
