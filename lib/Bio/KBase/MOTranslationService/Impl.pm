@@ -29,6 +29,7 @@ use Bio::KBase;
 use Bio::KBase::CDMI::CDMIClient;
 use Bio::KBase::ERDB_Service::Client;
 use DBKernel;
+use Data::Dumper;
 
 #END_HEADER
 
@@ -52,9 +53,9 @@ sub new
         my $port=3306;
         my $dbhost='db1.chicago.kbase.us';
 	# switch to public microbes online
-        $user='guest';
-        $pass='guest';
-        $dbhost='pub.microbesonline.org';
+        #$user='guest';
+        #$pass='guest';
+        #$dbhost='pub.microbesonline.org';
         my $sock='';
         my $dbKernel = DBKernel->new($dbms, $dbName, $user, $pass, $port, $dbhost, $sock);
         my $moDbh=$dbKernel->{_dbh};
@@ -831,24 +832,24 @@ sub moTaxonomyId_to_genomes
 
         # query the Genome2MD5 table for matches
         my $moDbh=$self->{moDbh};
-        my $sql = join "", 'SELECT DISTINCT genomeMD5 FROM Genome2MD5 WHERE taxonomyId=\'', $moTaxonomyId, '\'';
+        my $sql = 'SELECT DISTINCT genomeMD5 FROM Genome2MD5 WHERE taxonomyId=?';
         my $query_handle=$moDbh->prepare($sql);
-        $query_handle->execute();
+        $query_handle->execute($moTaxonomyId);
 
         # get each matching row
         while (my $row=$query_handle->fetch()) {
             push(@$mo_genome_md5s, $row->[0]);
         }
+	# should prob add check here so that if we don't have any results, we don't call md5s_to_genomes
 
+	#my $test_md5 = ['4138384cbf747edbde549398d1e123d0'];
         # call KBase cdmi api to fetch genomes that match these MD5s
         my $cdmi = $self->{cdmi};
         my $genomes = $cdmi->md5s_to_genomes($mo_genome_md5s);
 
         # transform results into a single list of KBase genome ids
-        $return = ();
-        foreach (values $genomes) {
-            push(@$return, $_->[0]);
-        }
+	my @ret_array = values %{$genomes};
+        $return = \@ret_array;
     }
 
     #END moTaxonomyId_to_genomes
