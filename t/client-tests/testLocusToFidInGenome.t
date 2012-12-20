@@ -46,13 +46,26 @@ while (my $row=$sth->fetch) {
 }
 #print Dumper(@$query_sequences)."\n";
 
-my ($result, $log) = $translation->map_to_fid($query_sequences,$target_genome);
+#my ($result, $log) = $translation->map_to_fid($query_sequences,$target_genome);
+#print Dumper($result)."\n";
+#print "LOG:\n$log\n";
+
+
+
+
+################## test 2, try it with MO locus ids directly
+
+# using data from the first query, create the input arguement
+my $locus_ids = [];
+foreach my $query (@$query_sequences) {
+    push $locus_ids, $query->{id};
+}
+
+print Dumper($locus_ids)."\n";
+
+my ($result, $log) = $translation->moLocusIds_to_fid_in_genome($locus_ids,$target_genome);
 print Dumper($result)."\n";
 print "LOG:\n$log\n";
-
-
-
-
 
 
 
