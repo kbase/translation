@@ -52,9 +52,9 @@ sub new
         my $port=3306;
         my $dbhost='db1.chicago.kbase.us';
 	# switch to public microbes online
-        #$user='guest';
-        #$pass='guest';
-        #$dbhost='pub.microbesonline.org';
+        $user='guest';
+        $pass='guest';
+        $dbhost='pub.microbesonline.org';
         my $sock='';
         my $dbKernel = DBKernel->new($dbms, $dbName, $user, $pass, $port, $dbhost, $sock);
         my $moDbh=$dbKernel->{_dbh};
@@ -628,9 +628,10 @@ sub map_to_fid
     
     foreach my $query (@$query_sequences) {
 	if($results->{$query->{id}}->{fid} eq '') {
-	    $results->{$query->{id}}->{fid} = "could not find a good match"
+	    $results->{$query->{id}}->{status} = "could not find a match"
 	}
     }
+    
     
     $return_1 = $results;
     
@@ -651,7 +652,7 @@ sub map_to_fid
 
 =head2 moLocusIds_to_fid_in_genome
 
-  $return = $obj->moLocusIds_to_fid_in_genome($moLocusIds)
+  $return_1, $log = $obj->moLocusIds_to_fid_in_genome($moLocusIds, $genomeId)
 
 =over 4
 
@@ -661,8 +662,12 @@ sub map_to_fid
 
 <pre>
 $moLocusIds is a reference to a list where each element is a moLocusId
-$return is a reference to a hash where the key is a moLocusId and the value is a result
+$genomeId is a genomeId
+$return_1 is a reference to a hash where the key is a moLocusId and the value is a result
+$log is a status
 moLocusId is an int
+genomeId is a kbaseId
+kbaseId is a string
 result is a reference to a hash where the following keys are defined:
 	best_match has a value which is a fid
 	status has a value which is a status
@@ -676,8 +681,12 @@ status is a string
 =begin text
 
 $moLocusIds is a reference to a list where each element is a moLocusId
-$return is a reference to a hash where the key is a moLocusId and the value is a result
+$genomeId is a genomeId
+$return_1 is a reference to a hash where the key is a moLocusId and the value is a result
+$log is a status
 moLocusId is an int
+genomeId is a kbaseId
+kbaseId is a string
 result is a reference to a hash where the following keys are defined:
 	best_match has a value which is a fid
 	status has a value which is a status
@@ -700,10 +709,11 @@ the less general method that we want for simplicity
 sub moLocusIds_to_fid_in_genome
 {
     my $self = shift;
-    my($moLocusIds) = @_;
+    my($moLocusIds, $genomeId) = @_;
 
     my @_bad_arguments;
     (ref($moLocusIds) eq 'ARRAY') or push(@_bad_arguments, "Invalid type for argument \"moLocusIds\" (value was \"$moLocusIds\")");
+    (!ref($genomeId)) or push(@_bad_arguments, "Invalid type for argument \"genomeId\" (value was \"$genomeId\")");
     if (@_bad_arguments) {
 	my $msg = "Invalid arguments passed to moLocusIds_to_fid_in_genome:\n" . join("", map { "\t$_\n" } @_bad_arguments);
 	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
@@ -711,17 +721,47 @@ sub moLocusIds_to_fid_in_genome
     }
 
     my $ctx = $Bio::KBase::MOTranslationService::Service::CallContext;
-    my($return);
+    my($return_1, $log);
     #BEGIN moLocusIds_to_fid_in_genome
+    
+    # first go to MO and get the locus inforamation
+    my $moDbh = $self->{moDbh};
+    my $sql='SELECT Locus.locusId,Position.begin,Position.end,AASeq.sequence,Position.strand FROM AASeq,Locus,Scaffold,Position WHERE '.
+            'Locus.priority=1 AND Locus.locusId=AASeq.locusId AND Locus.version=AASeq.version AND '.
+            'Locus.posId=Position.posId AND Locus.scaffoldId=Scaffold.scaffoldId AND Locus.locusId IN (';
+    my $placeholders='?,' x (scalar @$moLocusIds);
+    chop $placeholders;
+    $sql.=$placeholders.')';
+    my $sth=$moDbh->prepare($sql);
+    $sth->execute(@$moLocusIds);
+    
+    # process the query results and store them in an object we can pass to the map_to_fid method
+    my $query_sequences = [];
+    while (my $row=$sth->fetch) {
+	# switch the start and stop if we are on the minus strand
+	if (${$row}[4] eq '+') {
+	    push @$query_sequences, {id=>${$row}[0],start=>${$row}[1], stop=>${$row}[2], seq=>${$row}[3] };
+	} else {
+	    push @$query_sequences, {id=>${$row}[0],start=>${$row}[2], stop=>${$row}[1], seq=>${$row}[3] };
+	}
+    }
+    
+    # then we can call the method and save the results
+    my ($res, $l) = $self->map_to_fid($query_sequences,$genomeId);
+    $return_1 = $res;
+    $log = $l;
+    
+    
     #END moLocusIds_to_fid_in_genome
     my @_bad_returns;
-    (ref($return) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return\" (value was \"$return\")");
+    (ref($return_1) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return_1\" (value was \"$return_1\")");
+    (!ref($log)) or push(@_bad_returns, "Invalid type for return variable \"log\" (value was \"$log\")");
     if (@_bad_returns) {
 	my $msg = "Invalid returns passed to moLocusIds_to_fid_in_genome:\n" . join("", map { "\t$_\n" } @_bad_returns);
 	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
 							       method_name => 'moLocusIds_to_fid_in_genome');
     }
-    return($return);
+    return($return_1, $log);
 }
 
 

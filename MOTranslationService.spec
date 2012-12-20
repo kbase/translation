@@ -120,7 +120,7 @@ module MOTranslation {
 	
 	
 	/* the less general method that we want for simplicity */
-	funcdef moLocusIds_to_fid_in_genome(list<moLocusId> moLocusIds) returns (mapping<moLocusId,result>);
+	funcdef moLocusIds_to_fid_in_genome(list<moLocusId> moLocusIds, genomeId genomeId) returns (mapping<moLocusId,result>, status log);
 	
 	
 	
