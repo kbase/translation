@@ -43,11 +43,11 @@ while (my $row=$sth->fetch) {
         push @$query_sequences, {id=>${$row}[0],start=>${$row}[2], stop=>${$row}[1], seq=>${$row}[3] };
     }
 }
-print Dumper(@$query_sequences)."\n";
+#print Dumper(@$query_sequences)."\n";
 
-#my $result = $translation->map_to_fid($query_sequences,$target_genome);
-#print Dumper($result);
-	
+my ($result, $log) = $translation->map_to_fid($query_sequences,$target_genome);
+print Dumper($result)."\n";
+print "LOG:\n$log\n";
 
 
 

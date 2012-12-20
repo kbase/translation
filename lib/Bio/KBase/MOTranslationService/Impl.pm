@@ -27,6 +27,7 @@ info service).
 
 use Bio::KBase;
 use Bio::KBase::CDMI::CDMIClient;
+use Bio::KBase::ERDB_Service::Client;
 use DBKernel;
 
 #END_HEADER
@@ -39,6 +40,7 @@ sub new
     bless $self, $class;
     #BEGIN_CONSTRUCTOR
 
+        # do we need this call to KBase->new anymore?  can we remove this dependency? -mike
 #	my $kb = Bio::KBase->new();
 	my $cdmi = Bio::KBase::CDMI::CDMIClient->new;
 
@@ -49,12 +51,21 @@ sub new
         my $pass=undef;
         my $port=3306;
         my $dbhost='db1.chicago.kbase.us';
+	# switch to public microbes online
+        #$user='guest';
+        #$pass='guest';
+        #$dbhost='pub.microbesonline.org';
         my $sock='';
         my $dbKernel = DBKernel->new($dbms, $dbName, $user, $pass, $port, $dbhost, $sock);
         my $moDbh=$dbKernel->{_dbh};
 
+	# need to use config file here to get the url!!!!! 
+	my $erdb = Bio::KBase::ERDB_Service::Client->new("http://localhost:7061");
+	
+	
 	$self->{moDbh}=$moDbh;
 	$self->{cdmi}=$cdmi;
+	$self->{erdb}=$erdb;
 
     #END_CONSTRUCTOR
 
@@ -509,6 +520,120 @@ sub map_to_fid
     my $ctx = $Bio::KBase::MOTranslationService::Service::CallContext;
     my($return_1, $log);
     #BEGIN map_to_fid
+    
+    # construct the return objects
+    $return_1 = {}; $log = '';
+    my $query_count = scalar @{$query_sequences};
+    my $results = {};
+    foreach my $query (@$query_sequences) {
+	$results->{$query->{id}} = {fid=>'',status=>''};
+    }
+    
+    
+    $log.=" -> mapping based on md5 values first\n";
+    $log.=" -> looking up CDM data for your target genome\n";
+    #need a custom approach because the current cdmi methods don't limit the results based on genomes
+    my $erdb = $self->{erdb};
+    my $objectNames = 'ProteinSequence IsProteinFor Feature IsOwnedBy IsLocatedIn';
+    my $filterClause = 'IsLocatedIn(ordinal)=0 AND IsOwnedBy(to-link)=?';
+    my $parameters = [$genomeId];
+    my $fields = 'Feature(id) ProteinSequence(id) IsLocatedIn(begin) IsLocatedIn(len) IsLocatedIn(dir)';
+    my $count = 0; #as per ERDB doc, setting to zero returns all results
+    my @feature_list = @{$erdb->GetAll($objectNames, $filterClause, $parameters, $fields, $count)};
+    my $target_feature_count = scalar @feature_list;
+    
+    $log.=" -> found $target_feature_count features with protein sequences for your target genome\n";
+    
+    # create a hash for faster lookups
+    my $md5_2_feature_map = {};
+    my $feature_match = {};
+    foreach my $feature (@feature_list) {
+	my $start_pos; # the start position of the gene!  in the cds, start stores the left most position
+	if(${$feature}[4] eq '+') {
+	    $start_pos = ${$feature}[2];
+	} else {
+	    $start_pos = ${$feature}[2] + ${$feature}[3] - 1;
+	}
+	$md5_2_feature_map->{${$feature}[1]}->{${$feature}[0]}=[$start_pos,${$feature}[3]];
+	$feature_match->{${$feature}[0]} = '';
+    }
+    #print Dumper($md5_2_feature_map)."\n";
+    
+    
+    # actually try to do the mapping
+    my $exact_match_count = 0;
+    my $exact_md5_only_count = 0;
+    my $no_match_count = 0;
+    use Digest::MD5  qw(md5_hex);
+    foreach my $query (@$query_sequences) {
+	my $md5_value = md5_hex($query->{seq});
+	if(exists($md5_2_feature_map->{$md5_value})) {
+	    my $found_match = 0;
+	    my @keys = keys %{$md5_2_feature_map->{$md5_value}};
+	    foreach my $fid (@keys) {
+		if($query->{start} == $md5_2_feature_map->{$md5_value}->{$fid}->[0]) {
+		    if ($feature_match->{$fid} eq '') {
+			$feature_match->{$fid} = $query->{id};
+			$results->{$query->{id}}->{fid} = $fid;
+			$results->{$query->{id}}->{status} = "exact MD5 and start position match";
+		    } else {
+			die "two exact matches for $fid!! ($query->{id} and $feature_match->{$fid}";
+		    }
+		    $found_match=1;
+		    $exact_match_count++;
+		} elsif ( 30 > abs($query->{start} - $md5_2_feature_map->{$md5_value}->{$fid}->[0]) ) {
+		    if ($feature_match->{$fid} eq '') {
+			$feature_match->{$fid} = $query->{id};
+			$results->{$query->{id}}->{fid} = $fid;
+			$results->{$query->{id}}->{status} = "exact MD5; start position within 30bp";
+		    } else {
+			die "two overlapping matches for $fid!! ($query->{id} and $feature_match->{$fid}";
+		    }
+		    $exact_md5_only_count++;
+		}
+	    }
+	    if($found_match==0) {
+		# we may still be able to match if we get an exact md5 match AND there is only one matching feature,
+		# but we have to make sure that the feature is not mapped to anything closer
+		if( scalar(@keys) == 1) {
+		    #if( abs($md5_2_feature_map->{$md5_value}->{@keys[0]}-$query->{start}->[0]) < 30 ) {
+		    #    if ($feature_match->{$fid} eq '') {
+		    #	$feature_match->{$fid} = $query->{id};
+		    #} else {
+		    #    die "two exact matches for $fid!! ($query->{id} and $feature_match->{$fid}";
+		    #}
+		    #    $results->{$query->{id}}->{fid} = $fid;
+		    #    $results->{$query->{id}}->{status} = "exact MD5 match; start positions within 20bp";
+		    #    $counter++;
+		    #}
+		}
+		#}
+		#print "query: ".$query->{id}." md5: ".$md5_value." start: ".$query->{start}." end: ".$query->{end}."\n";
+		#print "match: ".Dumper($md5_2_feature_map->{$md5_value})."\n";
+		#if( scalar(@keys) == 1) {
+		#    my $fid = $md5_2_feature_map->{$md5_value}->{@keys[0]};
+		#    print "only one feature, which has been mapped to: '$feature_match->{$fid}'\n";
+		#}
+	    }
+	} else {
+	    $no_match_count++;
+	}
+    }
+    
+    $log.= " -> exactly matched: $exact_match_count of $query_count query sequences\n";
+    $log.= " -> matched MD5 +- 30bp: $exact_md5_only_count of $query_count query sequences\n";
+    my $total = $exact_match_count +$exact_md5_only_count;
+    $log.= " -> mapped: $total of $target_feature_count target genome features\n";
+	
+    
+    foreach my $query (@$query_sequences) {
+	if($results->{$query->{id}}->{fid} eq '') {
+	    $results->{$query->{id}}->{fid} = "could not find a good match"
+	}
+    }
+    
+    $return_1 = $results;
+    
     #END map_to_fid
     my @_bad_returns;
     (ref($return_1) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return_1\" (value was \"$return_1\")");
