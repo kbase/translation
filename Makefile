@@ -49,8 +49,8 @@ compile-typespec:
 		--scripts scripts \
 		$(SERVICE_NAME).spec lib
 	rm -r Bio # For some strange reason, compile_typespec always creates this directory in the root dir!
-    mkdir -p lib/java.out
-    gen_java_client $(SERVICE_NAME).spec gov.doe.kbase.$(SERVICE_NAME) lib/java.out
+	mkdir -p lib/java.out
+	gen_java_client $(SERVICE_NAME).spec gov.doe.kbase.$(SERVICE_NAME) lib/java.out
 
 build-docs: compile-typespec
 	mkdir -p docs
