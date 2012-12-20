@@ -9,7 +9,8 @@ use Test::More;
 
 
 use_ok("Bio::KBase::MOTranslationService::Client");
-my $translation = Bio::KBase::MOTranslationService::Client->new("http://localhost:7062");
+#my $translation = Bio::KBase::MOTranslationService::Client->new("http://localhost:7061");
+my $translation = Bio::KBase::MOTranslationService::Client->new("http://140.221.92.71:7061");
 my $target_genome = "kb|g.371";
 
 

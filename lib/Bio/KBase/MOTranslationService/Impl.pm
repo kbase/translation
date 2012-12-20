@@ -60,7 +60,7 @@ sub new
         my $moDbh=$dbKernel->{_dbh};
 
 	# need to use config file here to get the url!!!!! 
-	my $erdb = Bio::KBase::ERDB_Service::Client->new("http://localhost:7061");
+	my $erdb = Bio::KBase::ERDB_Service::Client->new("http://localhost:7999");
 	
 	
 	$self->{moDbh}=$moDbh;
