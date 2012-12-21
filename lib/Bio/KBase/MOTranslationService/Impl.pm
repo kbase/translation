@@ -627,7 +627,7 @@ sub map_to_fid
 	
     
     foreach my $query (@$query_sequences) {
-	if($results->{$query->{id}}->{fid} eq '') {
+	if($results->{$query->{id}}->{best_match} eq '') {
 	    $results->{$query->{id}}->{status} = "could not find a match"
 	}
     }
