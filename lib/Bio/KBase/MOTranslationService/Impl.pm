@@ -574,7 +574,7 @@ sub map_to_fid
 		if($query->{start} == $md5_2_feature_map->{$md5_value}->{$fid}->[0]) {
 		    if ($feature_match->{$fid} eq '') {
 			$feature_match->{$fid} = $query->{id};
-			$results->{$query->{id}}->{fid} = $fid;
+			$results->{$query->{id}}->{best_match} = $fid;
 			$results->{$query->{id}}->{status} = "exact MD5 and start position match";
 		    } else {
 			die "two exact matches for $fid!! ($query->{id} and $feature_match->{$fid}";
@@ -584,7 +584,7 @@ sub map_to_fid
 		} elsif ( 30 > abs($query->{start} - $md5_2_feature_map->{$md5_value}->{$fid}->[0]) ) {
 		    if ($feature_match->{$fid} eq '') {
 			$feature_match->{$fid} = $query->{id};
-			$results->{$query->{id}}->{fid} = $fid;
+			$results->{$query->{id}}->{best_match} = $fid;
 			$results->{$query->{id}}->{status} = "exact MD5; start position within 30bp";
 		    } else {
 			die "two overlapping matches for $fid!! ($query->{id} and $feature_match->{$fid}";
