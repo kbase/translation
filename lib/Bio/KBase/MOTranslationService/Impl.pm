@@ -526,7 +526,7 @@ sub map_to_fid
     my $query_count = scalar @{$query_sequences};
     my $results = {};
     foreach my $query (@$query_sequences) {
-	$results->{$query->{id}} = {fid=>'',status=>''};
+	$results->{$query->{id}} = {best_match=>'',status=>''};
     }
     
     
