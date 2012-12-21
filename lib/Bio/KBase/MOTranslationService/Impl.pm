@@ -63,7 +63,6 @@ sub new
 	# need to use config file here to get the url!!!!! 
 	my $erdb = Bio::KBase::ERDB_Service::Client->new("http://localhost:7999");
 	
-	
 	$self->{moDbh}=$moDbh;
 	$self->{cdmi}=$cdmi;
 	$self->{erdb}=$erdb;
@@ -827,8 +826,12 @@ sub moTaxonomyId_to_genomes
     my($return);
     #BEGIN moTaxonomyId_to_genomes
 
+    # setup the return array ref
+    $return = [];
+    
+    # make sure we have some input
     if ($moTaxonomyId ne "") {
-        my $mo_genome_md5s = ();
+        my $mo_genome_md5s = [];
 
         # query the Genome2MD5 table for matches
         my $moDbh=$self->{moDbh};
@@ -840,16 +843,21 @@ sub moTaxonomyId_to_genomes
         while (my $row=$query_handle->fetch()) {
             push(@$mo_genome_md5s, $row->[0]);
         }
-	# should prob add check here so that if we don't have any results, we don't call md5s_to_genomes
-
-	#my $test_md5 = ['4138384cbf747edbde549398d1e123d0'];
-        # call KBase cdmi api to fetch genomes that match these MD5s
-        my $cdmi = $self->{cdmi};
-        my $genomes = $cdmi->md5s_to_genomes($mo_genome_md5s);
-
-        # transform results into a single list of KBase genome ids
-	my @ret_array = values %{$genomes};
-        $return = \@ret_array;
+       
+        # check if we didn't find any results
+        if( scalar @{$mo_genome_md5s} > 0 ) {
+	    #my $test_mo_genome_md5s = ['4138384cbf747edbde549398d1e123d0'];
+	    # call KBase cdmi api to fetch genomes that match these MD5s
+	    my $cdmi = $self->{cdmi};
+	    my $genomes = $cdmi->md5s_to_genomes($mo_genome_md5s);
+    
+	    # transform results into a single list of KBase genome ids
+	    foreach my $genome_id_list (values %{$genomes}) {
+		foreach my $gid (@{$genome_id_list}) {
+		    push @$return, $gid;
+		}
+	    } 
+	}
     }
 
     #END moTaxonomyId_to_genomes
