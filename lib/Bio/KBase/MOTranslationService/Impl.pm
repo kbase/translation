@@ -29,7 +29,9 @@ use Bio::KBase;
 use Bio::KBase::CDMI::CDMIClient;
 use Bio::KBase::ERDB_Service::Client;
 use DBKernel;
+
 use Data::Dumper;
+use Benchmark;
 
 #END_HEADER
 
@@ -493,11 +495,19 @@ status is a string
 =item Description
 
 A general method to lookup the best matching feature id in a specific genome for a given protein sequence.
-The intended use of this method is to map identical genomes
-This method allows an incremental approach, for instance, exact MD5 is checked first, then
-some heuristics, possibly ending with a blast run...  Could start out simply using Gavin's heuristic
-matching algorithm if additional options are passed in, such as start and stop sites, or other genome
-context information such as ordering in an operon.
+
+NOTE: currently the intended use of this method is to map identical genomes with different gene calls, although it still
+can work for fairly similar genomes.  But be warned!!  It may produce incorrect results for genomes that differ!
+
+This method operates by first checking the MD5 and position of each sequence and determining if there is an exact match,
+(or an exact MD5 match +- 30bp).  If none are found, then a simple blast search is performed.  Currently the blast search
+is completely overkill as it is used simply to look for 50% overlap of genes. Blast was chosen, however, because it is
+anticipated that this, or a very similar implementation of this method, will be used more generally for mapping features
+on roughly similar genomes.  Keep very much in mind that this method is not designed to be a general homology search, which
+should be done with more advanced methods.  Rather, this method is designed more for bookkeeping purposes when data based on
+one genome with a set of gene calls needs to be applied to a genome with a second set of gene calls.
+
+see also the cooresponds method of the CDMI.
 
 =back
 
@@ -520,121 +530,272 @@ sub map_to_fid
     my $ctx = $Bio::KBase::MOTranslationService::Service::CallContext;
     my($return_1, $log);
     #BEGIN map_to_fid
-    
-    # construct the return objects
-    $return_1 = {}; $log = '';
-    my $query_count = scalar @{$query_sequences};
-    my $results = {};
-    foreach my $query (@$query_sequences) {
-	$results->{$query->{id}} = {best_match=>'',status=>''};
-    }
-    
-    
-    $log.=" -> mapping based on md5 values first\n";
-    $log.=" -> looking up CDM data for your target genome\n";
-    #need a custom approach because the current cdmi methods don't limit the results based on genomes
-    my $erdb = $self->{erdb};
-    my $objectNames = 'ProteinSequence IsProteinFor Feature IsOwnedBy IsLocatedIn';
-    my $filterClause = 'IsLocatedIn(ordinal)=0 AND IsOwnedBy(to-link)=?';
-    my $parameters = [$genomeId];
-    my $fields = 'Feature(id) ProteinSequence(id) IsLocatedIn(begin) IsLocatedIn(len) IsLocatedIn(dir)';
-    my $count = 0; #as per ERDB doc, setting to zero returns all results
-    my @feature_list = @{$erdb->GetAll($objectNames, $filterClause, $parameters, $fields, $count)};
-    my $target_feature_count = scalar @feature_list;
-    
-    $log.=" -> found $target_feature_count features with protein sequences for your target genome\n";
-    
-    # create a hash for faster lookups
-    my $md5_2_feature_map = {};
-    my $feature_match = {};
-    foreach my $feature (@feature_list) {
-	my $start_pos; # the start position of the gene!  in the cds, start stores the left most position
-	if(${$feature}[4] eq '+') {
-	    $start_pos = ${$feature}[2];
-	} else {
-	    $start_pos = ${$feature}[2] + ${$feature}[3] - 1;
-	}
-	$md5_2_feature_map->{${$feature}[1]}->{${$feature}[0]}=[$start_pos,${$feature}[3]];
-	$feature_match->{${$feature}[0]} = '';
-    }
-    #print Dumper($md5_2_feature_map)."\n";
-    
-    
-    # actually try to do the mapping
-    my $exact_match_count = 0;
-    my $exact_md5_only_count = 0;
-    my $no_match_count = 0;
-    use Digest::MD5  qw(md5_hex);
-    foreach my $query (@$query_sequences) {
-	my $md5_value = md5_hex($query->{seq});
-	if(exists($md5_2_feature_map->{$md5_value})) {
-	    my $found_match = 0;
-	    my @keys = keys %{$md5_2_feature_map->{$md5_value}};
-	    foreach my $fid (@keys) {
-		if($query->{start} == $md5_2_feature_map->{$md5_value}->{$fid}->[0]) {
-		    if ($feature_match->{$fid} eq '') {
-			$feature_match->{$fid} = $query->{id};
-			$results->{$query->{id}}->{best_match} = $fid;
-			$results->{$query->{id}}->{status} = "exact MD5 and start position match";
-		    } else {
-			die "two exact matches for $fid!! ($query->{id} and $feature_match->{$fid}";
-		    }
-		    $found_match=1;
-		    $exact_match_count++;
-		} elsif ( 30 > abs($query->{start} - $md5_2_feature_map->{$md5_value}->{$fid}->[0]) ) {
-		    if ($feature_match->{$fid} eq '') {
-			$feature_match->{$fid} = $query->{id};
-			$results->{$query->{id}}->{best_match} = $fid;
-			$results->{$query->{id}}->{status} = "exact MD5; start position within 30bp";
-		    } else {
-			die "two overlapping matches for $fid!! ($query->{id} and $feature_match->{$fid}";
-		    }
-		    $exact_md5_only_count++;
-		}
-	    }
-	    if($found_match==0) {
-		# we may still be able to match if we get an exact md5 match AND there is only one matching feature,
-		# but we have to make sure that the feature is not mapped to anything closer
-		if( scalar(@keys) == 1) {
-		    #if( abs($md5_2_feature_map->{$md5_value}->{@keys[0]}-$query->{start}->[0]) < 30 ) {
-		    #    if ($feature_match->{$fid} eq '') {
-		    #	$feature_match->{$fid} = $query->{id};
-		    #} else {
-		    #    die "two exact matches for $fid!! ($query->{id} and $feature_match->{$fid}";
-		    #}
-		    #    $results->{$query->{id}}->{fid} = $fid;
-		    #    $results->{$query->{id}}->{status} = "exact MD5 match; start positions within 20bp";
-		    #    $counter++;
-		    #}
-		}
-		#}
-		#print "query: ".$query->{id}." md5: ".$md5_value." start: ".$query->{start}." end: ".$query->{end}."\n";
-		#print "match: ".Dumper($md5_2_feature_map->{$md5_value})."\n";
-		#if( scalar(@keys) == 1) {
-		#    my $fid = $md5_2_feature_map->{$md5_value}->{@keys[0]};
-		#    print "only one feature, which has been mapped to: '$feature_match->{$fid}'\n";
-		#}
-	    }
-	} else {
-	    $no_match_count++;
-	}
-    }
-    
-    $log.= " -> exactly matched: $exact_match_count of $query_count query sequences\n";
-    $log.= " -> matched MD5 +- 30bp: $exact_md5_only_count of $query_count query sequences\n";
-    my $total = $exact_match_count +$exact_md5_only_count;
-    $log.= " -> mapped: $total of $target_feature_count target genome features\n";
 	
-    
-    foreach my $query (@$query_sequences) {
-	if($results->{$query->{id}}->{best_match} eq '') {
-	    $results->{$query->{id}}->{status} = "could not find a match"
+	# start a timer so we can map progress
+	my $t_start = Benchmark->new;
+	
+	# construct the return objects and a map for quickly finding our query positions
+	$return_1 = {}; $log = '';
+	my $query_count = scalar @{$query_sequences};
+	my $results = {}; my $query_id_to_start = {};
+	foreach my $query (@$query_sequences) {
+	    $results->{$query->{id}} = {best_match=>'',status=>''};
+	    $query_id_to_start->{$query->{id}} = $query->{start};
 	}
-    }
-    
-    
-    $return_1 = $results;
-    
+	
+	# grab the feature location and md5 values
+	$log.=" -> mapping based on md5 values and positions first\n";
+	$log.=" -> looking up CDM data for your target genome\n";
+	#need a custom approach because the current cdmi methods don't limit the results based on genomes
+	my $erdb = $self->{erdb};
+	my $objectNames = 'ProteinSequence IsProteinFor Feature IsOwnedBy IsLocatedIn';
+	my $filterClause = 'IsLocatedIn(ordinal)=0 AND IsOwnedBy(to-link)=?';
+	my $parameters = [$genomeId];
+	my $fields = 'Feature(id) ProteinSequence(id) IsLocatedIn(begin) IsLocatedIn(len) IsLocatedIn(dir)';
+	my $count = 0; #as per ERDB doc, setting to zero returns all results
+	my @feature_list = @{$erdb->GetAll($objectNames, $filterClause, $parameters, $fields, $count)};
+	my $target_feature_count = scalar @feature_list;
+	$log.=" -> found $target_feature_count features with protein sequences for your target genome\n     ".timestr(timediff(Benchmark->new,$t_start))."\n";
+	
+	# create a hash for faster lookups of the features based on md5
+	my $md5_2_feature_map = {}; my $feature_to_start = {};
+	my $feature_match = {};
+	foreach my $feature (@feature_list) {
+	    my $start_pos; # the start position of the gene!  in the cds, start stores the left most position
+	    if(${$feature}[4] eq '+') {
+		$start_pos = ${$feature}[2];
+	    } else {
+		$start_pos = ${$feature}[2] + ${$feature}[3] - 1;
+	    }
+	    $md5_2_feature_map->{${$feature}[1]}->{${$feature}[0]}=[$start_pos,${$feature}[3]];
+	    $feature_match->{${$feature}[0]} = '';
+	    $feature_to_start->{${$feature}[0]} = $start_pos;
+	}
+	
+	##########################################################################
+	# actually try to do the mapping based on MD5 and exact position
+	my $exact_match_count = 0;
+	my $exact_md5_only_count = 0;
+	my $likely_match_count = 0;
+	my $best_likely_match = {};
+	my $no_match_count = 0;
+	use Digest::MD5  qw(md5_hex);
+	foreach my $query (@$query_sequences) {
+	    my $md5_value = md5_hex($query->{seq});
+	    if(exists($md5_2_feature_map->{$md5_value})) {
+		my $found_match = 0;
+		my @keys = keys %{$md5_2_feature_map->{$md5_value}};
+		foreach my $fid (@keys) {
+		    if($query->{start} == $md5_2_feature_map->{$md5_value}->{$fid}->[0]) {
+			if ($feature_match->{$fid} eq '') {
+			    $feature_match->{$fid} = $query->{id};
+			    $results->{$query->{id}}->{best_match} = $fid;
+			    $results->{$query->{id}}->{status} = "exact MD5 and start position match";
+			} else {
+			    die "two exact matches for $fid!! ($query->{id} and $feature_match->{$fid}";
+			}
+			$found_match=1;
+			$exact_match_count++;
+		    } elsif ( 30 > abs($query->{start} - $md5_2_feature_map->{$md5_value}->{$fid}->[0]) ) {
+			if ($feature_match->{$fid} eq '') {
+			    $feature_match->{$fid} = $query->{id};
+			    $results->{$query->{id}}->{best_match} = $fid;
+			    $results->{$query->{id}}->{status} = "exact MD5; start position within 30bp";
+			} else {
+			    die "two overlapping matches for $fid!! ($query->{id} and $feature_match->{$fid}";
+			}
+			$exact_md5_only_count++;
+		    }
+		}
+		if($found_match==0) {
+		    # we may still be able to match if we get an exact md5 match AND there is only one matching feature,
+		    # but we have to make sure that the feature is not mapped to anything closer
+		    
+		    my $best_match = ""; my $best_hit_distance=99999999;
+		    foreach my $fid (@keys) {
+			if ($feature_match->{$fid} eq '') {
+			    my $hit_distance = abs($query->{start} - $md5_2_feature_map->{$md5_value}->{$fid}->[0]);
+			    if($hit_distance<=$best_hit_distance) {
+				$best_match = $fid; $best_hit_distance = $hit_distance;
+			    }
+			}
+		    }
+		    $best_likely_match->{$query->{id}} = $best_match;
+		    
+		}
+	    } else {
+		$no_match_count++;
+	    }
+	}
+	
+	# go through the likely matches, if it has not been matched yet, then just do it.
+	foreach my $likely_match (keys %$best_likely_match) {
+	    my $fid = $best_likely_match->{$likely_match};
+	    if ($feature_match->{$fid} ne '') {
+		$likely_match_count++;
+		$feature_match->{$fid} = $likely_match;
+		$results->{$likely_match}->{best_match} = $fid;
+		$results->{$likely_match}->{status} = "exact MD5 match. chose closest unmatched feature at xx bp away, but that is probably not correct.";
+	    }
+	}
+	
+	
+	$log.= " -> exactly matched: $exact_match_count of $query_count query sequences\n";
+	$log.= " -> matched MD5 +- 30bp: $exact_md5_only_count of $query_count query sequences\n";
+	$log.= " -> matched exact MD5 to likely match: $likely_match_count of $query_count query sequences\n";
+	my $total = $exact_match_count +$exact_md5_only_count + $likely_match_count;
+	$log.= " -> mapped: $total of $target_feature_count target genome features\n     ".timestr(timediff(Benchmark->new,$t_start))."\n";
+	
+	##########################################################################
+	### now we try to blast if there are some not matched....
+	if( $query_count > $total ) {
+	    
+	    #figure out first where we should look for a blast DB
+	    my $scratch_space = "/kb/deployment/services/translation/";
+	    my $fasta_file_name = $scratch_space.substr($genomeId,3);
+	    
+	    if (-e $fasta_file_name) {
+		$log.=" -> blast database for target genome already exists. awesome.\n";
+	    } else { 
+		$log.="-> building BLAST database for the target genome $genomeId\n";
+		# get all the features with a protein coding sequence, and also get that protein sequence and MD5
+		my $objectNames = 'ProteinSequence IsProteinFor Feature IsOwnedBy';
+		my $filterClause = 'IsOwnedBy(to-link)=?';
+		my $parameters = [$genomeId];
+		my $fields = 'Feature(id) ProteinSequence(id) ProteinSequence(sequence)';
+		my $count = 0; #as per ERDB doc, setting to zero returns all results
+		my @feature_list = @{$erdb->GetAll($objectNames, $filterClause, $parameters, $fields, $count)};
+		
+		# put each feature in a fasta file that we can convert to a BLAST DB
+		open (FASTA_DB, ">$fasta_file_name");
+		foreach my $feature (@feature_list) {
+		    my $fid_simple = substr(${$feature}[0],3);
+		    print FASTA_DB ">".$fid_simple."\n"; # the feature ID is pos 0
+		    print FASTA_DB ${$feature}[2]."\n"; # the feature protein sequence in pos 0
+		}
+		close (FASTA_DB);
+		
+		# convert the fasta file to a blast DB
+		system("formatdb","-p","T","-l","formatdb.log","-i",$fasta_file_name);
+		
+		$log.="-> BLAST database has been constructed\n";
+		$log.="     ".timestr(timediff(Benchmark->new,$t_start))."\n";
+	    }
+	    
+	    #$File::Temp::KEEP_ALL = 1; # FOR DEBUGGING ONLY, WE DON't WANT TO KEEP ALL FILES IN PRODUCTION
+	    my $tmp_file = File::Temp->new( TEMPLATE => 'queryXXXXXXXXXX',
+				DIR => $scratch_space,
+				SUFFIX => '.fasta.tmp');
+	    # save all the files that we couldn't match (note, this step could be rolled into the loop of the md5 matching...)
+	    my $blast_query_count=0;
+	    foreach my $query (@$query_sequences) {
+		if($results->{$query->{id}}->{best_match} eq '') {
+		    print $tmp_file ">".$query->{id}."\n";
+		    print $tmp_file $query->{seq}."\n";
+		    $blast_query_count++;
+		}
+	    }
+	    $log.=" -> generated query consisting of $blast_query_count sequences\n";
+	    $log.="     ".timestr(timediff(Benchmark->new,$t_start))."\n";
+	    
+	    # time to blast:
+	    # options for blasting:
+	    #  we expect the genomes to be identical for now, so we do not expect gapped alignments, but we do not
+	    #      enforce this because we might want to extend this method in the future for similar genomes
+	    #  (note that if we turn off gaps, we must also turn off comp_based_stats)
+	    #  we set the evalue threshold to be 0.01 (since really, for now, we are looking for exact matches)
+	    #  we set the output format to 6, which is simple tabular format with the specified ordering
+	    open(RESULTS,"blastp ".
+		 #"-ungapped ".
+		 #"-comp_based_stats F ".
+		 "-evalue 0.01 ".
+		 # Fields: query id, subject id, evalue, bit score, identical, alignment length, query length, subject length
+		 "-outfmt='6 qseqid sseqid evalue bitscore nident length qlen slen' ".
+		 "-db $fasta_file_name ".
+		 "-query ".$tmp_file->filename." |") || die "Failed: $!\n";
+	    
+	    # compile the results
+	    my $last_query = ''; my $last_hit = []; my $c=0; my $match_count=0;
+	    while(my $line=<RESULTS>) {
+		chomp($line);
+		my @hit = split("\t",$line);
+		
+		# in case we want to iterate over the hits for a single query, we can do this here
+		#if( $hit[0] ne $last_query ) {
+		#    print "----";
+		#    $last_query=$hit[0];
+		#}
+		
+		# compute number of identical matches over the query and subject sequences
+		my $query_coverage = $hit[4] / $hit[6];
+		my $subject_coverage = $hit[4] / $hit[7];
+		
+		my $query_id = $hit[0];
+		my $fid = 'kb|'.$hit[1];
+		
+		# coverage must be (arbitrarily) over 50% bidirectional
+		my $min_coverage = 0.5;
+		if( $query_coverage>=$min_coverage  &&  $subject_coverage>=$min_coverage ) {
+		    #print $line."\n";
+		    #print "possible hit: q:".$hit[0]." h:".$hit[1]." qc:".$query_coverage." sc:".$subject_coverage."\n";
+		    
+		    # and if the start positions are within the length of the alignment (note that this cannot be
+		    # trusted unless genomes are identical!!  If they are merely similar, than we have to do more!)
+		    my $max_allowed_distance = 0;
+		    if ($hit[6]>=$hit[7]) { $max_allowed_distance = $hit[6]-$hit[5]+1; }
+		    else { $max_allowed_distance = $hit[7]-$hit[5]+1; }
+		    $max_allowed_distance = $max_allowed_distance * 3;
+		    
+		    my $hit_distance = abs($query_id_to_start->{$query_id} - $feature_to_start->{$fid});
+		    if($max_allowed_distance > $hit_distance ) {
+			
+			if ($results->{$query_id}->{best_match} eq '') {
+			    if ($feature_match->{$fid} eq '') {
+				    $feature_match->{$fid} = $query_id;
+				    $results->{$query_id}->{best_match} = $fid;
+				    $results->{$query_id}->{status} = ">50% identity blast hit with start positions that differ by $hit_distance bp";
+				    $match_count++;
+			    } else {
+				    $results->{$query_id}->{status} = "found a good blast hit ($fid), but $fid was already mapped to $feature_match->{$fid}.";
+			    }
+			}
+			# we could expand this to find the closest hit like so....
+			#else {
+			#    my $first_hit_distance = abs($query_id_to_start->{$query_id} - $feature_to_start->{$results->{$query_id}->{best_match}});
+			#    #print "first hit distance: ".$first_hit_distance."\n";
+			#    if($hit_distance < $first_hit_distance) {
+			#	if ($feature_match->{$fid} eq '') {
+			#	    $feature_match->{$fid} = $query_id;
+			#	    $results->{$query_id}->{best_match} = $fid;
+			#	    $results->{$query_id}->{status} = ">50% identity blast hit with start positions that differ by $hit_distance bp";
+			#	} else {
+			#	    $results->{$query_id}->{status} = "found a good blast hit ($fid), but $fid was already mapped to $feature_match->{$fid}.";
+			#	}
+			#   }
+			#}
+		    }
+		    $c++;
+		}
+	    }
+	    $log.=" -> blast could map $match_count of $blast_query_count sequences\n";
+	    $log.="     ".timestr(timediff(Benchmark->new,$t_start))."\n";
+	}
+	
+	
+	##########################################################################
+	# admit defeat for those genes we could not match, then wrap up
+	my $no_good_match_counter=0;
+	foreach my $query (@$query_sequences) {
+	    if($results->{$query->{id}}->{best_match} eq '') {
+		$no_good_match_counter++;
+		$results->{$query->{id}}->{status} = "could not find a match: ".$results->{$query->{id}}->{status};
+	    }
+	}
+	
+	$log.=" -> we were unable to map $no_good_match_counter of $query_count query sequences\n";
+	
+	$return_1 = $results;
+	
     #END map_to_fid
     my @_bad_returns;
     (ref($return_1) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return_1\" (value was \"$return_1\")");
@@ -700,7 +861,10 @@ status is a string
 
 =item Description
 
-the less general method that we want for simplicity
+A method designed to map MicrobesOnline locus ids to the features of a specific target genome in kbase.  Under the hood, this
+method simply fetches MicrobesOnline data and calls the 'map_to_fid' method defined in this service.  Therefore, all the caveats
+and disclaimers of the 'map_to_fid' method apply to this function as well, so be sure to read the documenation for the 'map_to_fid'
+method as well!
 
 =back
 
@@ -803,7 +967,9 @@ kbaseId is a string
 
 =item Description
 
-A method to map MO identical genomes.
+A method to map a MicrobesOnline genome (identified by taxonomy Id) to the set of identical kbase genomes based on an MD5 checksum
+of the contig sequences.  If you already know your MD5 value for your genome (computed in the KBase way), then you should avoid this
+method and directly query the CDS using the CDMI API, which includes a method 'md5s_to_genomes'.
 
 =back
 
@@ -1205,6 +1371,11 @@ a string
 
 
 
+=item Description
+
+Used to indicate a single nucleotide/residue location in a sequence
+
+
 =item Definition
 
 =begin html
@@ -1218,6 +1389,38 @@ an int
 =begin text
 
 an int
+
+=end text
+
+=back
+
+
+
+=head2 status
+
+=over 4
+
+
+
+=item Description
+
+A short note used to convey the status or explanaton of a result, or in some cases a log of the
+method that was run
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a string
+</pre>
+
+=end html
+
+=begin text
+
+a string
 
 =end text
 
@@ -1233,7 +1436,16 @@ an int
 
 =item Description
 
-struct for input for constructing the sequence to fid mapping
+A structure for specifying the input sequence queries for the map_to_fid method.  This structure, for
+now, assumes you will be making queries with identical genomes, so it requires the start and stop.  In the
+future, if this assumption is relaxed, then start and stop will be optional parameters.  We should probably
+also add an MD5 string which can optionally be provided so that we don't have to compute it on the fly.
+
+        protein_id id         - arbitrary ID that must be unique within the set of query sequences
+        protein_sequence seq  - the one letter code AA sequence of the protein
+        position start        - the start position of the start codon in the genome contig (may be a larger
+                                number than stop if the gene is on the reverse strand)
+        position stop         - the last position of he stop codon in the genome contig
 
 
 =item Definition
@@ -1259,32 +1471,6 @@ seq has a value which is a protein_sequence
 start has a value which is a position
 stop has a value which is a position
 
-
-=end text
-
-=back
-
-
-
-=head2 status
-
-=over 4
-
-
-
-=item Definition
-
-=begin html
-
-<pre>
-a string
-</pre>
-
-=end html
-
-=begin text
-
-a string
 
 =end text
 
@@ -1300,7 +1486,12 @@ a string
 
 =item Description
 
-indicates how the best match was found, or other details
+A simple structure which returns the best matching FID to a given query (see query_sequence) and attaches
+a short status string indicating how the match was made, or which consoles you after a match could not
+be made.
+
+        fid best_match - the feature ID of a KBase feature that offers the best mapping to your query
+        status status  - a short note explaining how the match was made
 
 
 =item Definition
