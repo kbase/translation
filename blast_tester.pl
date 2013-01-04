@@ -58,9 +58,9 @@ $sth->execute($tax_id);
 while (my $row=$sth->fetch) {
     # switch the start and stop if we are on the minus strand
     if (${$row}[4] eq '+') {
-        push @$query_sequences, {id=>${$row}[0],start=>${$row}[1], end=>${$row}[2], seq=>${$row}[3] };
+        push @$query_sequences, {id=>${$row}[0],start=>${$row}[1], stop=>${$row}[2], seq=>${$row}[3] };
     } else {
-        push @$query_sequences, {id=>${$row}[0],start=>${$row}[2], end=>${$row}[1], seq=>${$row}[3] };
+        push @$query_sequences, {id=>${$row}[0],start=>${$row}[2], stop=>${$row}[1], seq=>${$row}[3] };
     }
 }
 #print Dumper($query_sequences)."\n";

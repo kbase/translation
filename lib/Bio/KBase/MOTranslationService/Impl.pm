@@ -32,6 +32,7 @@ use DBKernel;
 
 use Data::Dumper;
 use Benchmark;
+use List::Util qw[min max];
 
 #END_HEADER
 
@@ -54,10 +55,13 @@ sub new
         my $pass=undef;
         my $port=3306;
         my $dbhost='db1.chicago.kbase.us';
+	# switch to ssh tunnel
+	 #my $port=13306;
+	 #my $dbhost='127.0.0.1';
 	# switch to public microbes online
-        #$user='guest';
-        #$pass='guest';
-        #$dbhost='pub.microbesonline.org';
+         #$user='guest';
+         #$pass='guest';
+         #$dbhost='pub.microbesonline.org';
         my $sock='';
         my $dbKernel = DBKernel->new($dbms, $dbName, $user, $pass, $port, $dbhost, $sock);
         my $moDbh=$dbKernel->{_dbh};
@@ -68,6 +72,10 @@ sub new
 	$self->{moDbh}=$moDbh;
 	$self->{cdmi}=$cdmi;
 	$self->{erdb}=$erdb;
+	
+	# change this to where you want the blast databases stored...
+	$self->{scratch_space}="/kb/deployment/services/translation/";
+	$self->{scratch_space}="/kb/deployment/services/translation/";
 
     #END_CONSTRUCTOR
 
@@ -651,7 +659,7 @@ sub map_to_fid
 	if( $query_count > $total ) {
 	    
 	    #figure out first where we should look for a blast DB
-	    my $scratch_space = "/kb/deployment/services/translation/";
+	    my $scratch_space = $self->{scratch_space};
 	    my $fasta_file_name = $scratch_space.substr($genomeId,3);
 	    
 	    if (-e $fasta_file_name) {
@@ -811,6 +819,273 @@ sub map_to_fid
 
 
 
+=head2 map_to_fid_fast
+
+  $return_1, $log = $obj->map_to_fid_fast($query_md5s, $genomeId)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$query_md5s is a reference to a list where each element is a query_md5
+$genomeId is a genomeId
+$return_1 is a reference to a hash where the key is a protein_id and the value is a result
+$log is a status
+query_md5 is a reference to a hash where the following keys are defined:
+	id has a value which is a protein_id
+	md5 has a value which is a protein
+	start has a value which is a position
+	stop has a value which is a position
+protein_id is a string
+protein is a string
+position is an int
+genomeId is a kbaseId
+kbaseId is a string
+result is a reference to a hash where the following keys are defined:
+	best_match has a value which is a fid
+	status has a value which is a status
+fid is a string
+status is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$query_md5s is a reference to a list where each element is a query_md5
+$genomeId is a genomeId
+$return_1 is a reference to a hash where the key is a protein_id and the value is a result
+$log is a status
+query_md5 is a reference to a hash where the following keys are defined:
+	id has a value which is a protein_id
+	md5 has a value which is a protein
+	start has a value which is a position
+	stop has a value which is a position
+protein_id is a string
+protein is a string
+position is an int
+genomeId is a kbaseId
+kbaseId is a string
+result is a reference to a hash where the following keys are defined:
+	best_match has a value which is a fid
+	status has a value which is a status
+fid is a string
+status is a string
+
+
+=end text
+
+
+
+=item Description
+
+Performs the same function as map_to_fid, except it does not require protein sequences to be defined. Instead, it assumes
+genomes are identical and simply looks for genes on the same strand that overlap by at least 50%. Since no sequences are
+compared, this method is fast.  But, since no sequences are compared, this method only makes sense for identical genomes
+
+=back
+
+=cut
+
+sub map_to_fid_fast
+{
+    my $self = shift;
+    my($query_md5s, $genomeId) = @_;
+
+    my @_bad_arguments;
+    (ref($query_md5s) eq 'ARRAY') or push(@_bad_arguments, "Invalid type for argument \"query_md5s\" (value was \"$query_md5s\")");
+    (!ref($genomeId)) or push(@_bad_arguments, "Invalid type for argument \"genomeId\" (value was \"$genomeId\")");
+    if (@_bad_arguments) {
+	my $msg = "Invalid arguments passed to map_to_fid_fast:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'map_to_fid_fast');
+    }
+
+    my $ctx = $Bio::KBase::MOTranslationService::Service::CallContext;
+    my($return_1, $log);
+    #BEGIN map_to_fid_fast
+    
+	# start a timer so we can map progress
+	my $t_start = Benchmark->new;
+	
+	# construct the return objects and a map for quickly finding our query positions
+	$return_1 = {}; $log = '';
+	my $query_count = scalar @{$query_md5s};
+	my $results = {};
+	foreach my $query (@$query_md5s) {
+	    $results->{$query->{id}} = {best_match=>'',status=>''};
+	}
+	
+	# grab the feature location and md5 values
+	$log.=" -> looking up CDM data for your target genome\n";
+	#need a custom approach because the current cdmi methods don't limit the results based on genomes
+	my $erdb = $self->{erdb};
+	my $objectNames = 'IsProteinFor Feature IsOwnedBy IsLocatedIn';
+	my $filterClause = 'IsLocatedIn(ordinal)=0 AND IsOwnedBy(to-link)=?';
+	my $parameters = [$genomeId];
+	my $fields = 'Feature(id) IsProteinFor(from_link) IsLocatedIn(begin) IsLocatedIn(len) IsLocatedIn(dir)';
+	my $count = 0; #as per ERDB doc, setting to zero returns all results
+	my @feature_list = @{$erdb->GetAll($objectNames, $filterClause, $parameters, $fields, $count)};
+	my $target_feature_count = scalar @feature_list;
+	$log.=" -> found $target_feature_count features with protein sequences for your target genome\n";
+	$log.="     ".timestr(timediff(Benchmark->new,$t_start))."\n";
+	
+	# create a hash for faster lookups of the features based on md5
+	my $md5_2_feature_map = {};
+	my $feature_match = {};
+	foreach my $feature (@feature_list) {
+	    my $start_pos; # the start position of the gene!  in the CDS, start stores the left most position
+	    if(${$feature}[4] eq '+') {
+		$start_pos = ${$feature}[2];
+	    } else {
+		$start_pos = ${$feature}[2] + ${$feature}[3] - 1;
+	    }
+	    $md5_2_feature_map->{${$feature}[1]}->{${$feature}[0]}=[$start_pos,${$feature}[3],${$feature}[4]];
+	    $feature_match->{${$feature}[0]} = '';
+	}
+	$log.=" -> built data structure md5 maps for your target genome\n";
+	$log.="     ".timestr(timediff(Benchmark->new,$t_start))."\n";
+    
+	##########################################################################
+	# actually try to do the mapping based on MD5 and exact position
+	$log.=" -> mapping based on exact md5 values and positions\n";
+	my $exact_match_count = 0;
+	my $likely_match_count = 0;
+	my $best_likely_match = {};
+	my $no_match_count = 0;
+	my $no_match_list = [];
+	foreach my $query (@$query_md5s) {
+	    my $md5_value = $query->{md5};
+	    if(exists($md5_2_feature_map->{$md5_value})) {
+		my $found_match = 0;
+		my @keys = keys %{$md5_2_feature_map->{$md5_value}};
+		foreach my $fid (@keys) {
+		    if($query->{start} == $md5_2_feature_map->{$md5_value}->{$fid}->[0]) {
+			if ($feature_match->{$fid} eq '') {
+			    $feature_match->{$fid} = $query->{id};
+			    $results->{$query->{id}}->{best_match} = $fid;
+			    $results->{$query->{id}}->{status} = "exact MD5 and start position match";
+			} else {
+			    die "two exact matches for $fid!! ($query->{id} and $feature_match->{$fid}";
+			}
+			$found_match=1;
+			$exact_match_count++;
+		    }
+		}
+	    } else {
+		$no_match_count++;
+		push @$no_match_list, $query;
+	    }
+	}
+	$log.= " -> exactly matched: $exact_match_count of $query_count query sequences\n";
+	$log.= "     ".timestr(timediff(Benchmark->new,$t_start))."\n";
+	
+	# now we consider overlapping matches.  We could use the locations_to_fids method of the cdmi, but it makes
+	# a separate database query for each location!!  here, we have all the data, so we should be able to do better
+	# right now, though, this hack solution just performs a nested loop.  we should sort one of the lists to get
+	# better performance!
+	$log.=" -> mapping based on positional overlap\n";
+	my $unmatched_features = [];
+	foreach my $feature (@feature_list) {
+	    if($feature_match->{${$feature}[0]} eq '') {
+		push @$unmatched_features, $feature;
+	    }
+	}
+	
+	#################
+	# we should purge and ignore the fids that have multiple locations here!!!
+	#################
+	
+	# loop over every possible match
+	my $overlap_matches=0;
+	foreach my $query (@$no_match_list) {
+	    foreach my $feature (@$unmatched_features) {
+		
+		# first identify the query strand
+		my $query_strand="+";
+		if( $query->{stop} < $query->{start} ) { $query_strand="-"; }
+		
+		# make sure the strands match, and if so, check for an overlap
+		if ($query_strand eq ${$feature}[4]) {
+		    
+		    # first get the lengths of the sequences
+		    my $query_length = abs($query->{stop}-$query->{start});
+		    my $feature_length = ${$feature}[3];
+		    
+		    if(${$feature}[4] eq '+') {
+			my $fid_start = ${$feature}[2];
+			my $fid_stop = ${$feature}[2] + ${$feature}[3] - 1;
+			my $overlap = max(0, min($query->{stop},$fid_stop) - max($query->{start},$fid_start));
+			my $query_overlap = $overlap / $query_length;
+			my $target_overlap = $overlap / $feature_length;
+			if ( $query_overlap>0.5 && $target_overlap>0.5 ) {
+			    $feature_match->{${$feature}[0]} = $query->{id};
+			    $results->{$query->{id}}->{best_match} = ${$feature}[0];
+			    $results->{$query->{id}}->{status} = "overlapping positions: $query_overlap query coverage, $target_overlap target coverage.";
+			    $overlap_matches++;
+			    last;  # for now, find the first match, and return. This could be bad if there are more matches!!!!
+			}
+		    } else {
+			my $fid_start = ${$feature}[2] + ${$feature}[3] - 1;
+			my $fid_stop = ${$feature}[2];
+			my $overlap = max(0, min($query->{start},$fid_start) - max($query->{stop},$fid_stop));
+			my $query_overlap = $overlap / $query_length;
+			my $target_overlap = $overlap / $feature_length;
+			if ( $query_overlap>0.5 && $target_overlap>0.5 ) {
+			    $feature_match->{${$feature}[0]} = $query->{id};
+			    $results->{$query->{id}}->{best_match} = ${$feature}[0];
+			    $results->{$query->{id}}->{status} = "overlapping positions: $query_overlap query coverage, $target_overlap target coverage.";
+			    $overlap_matches++;
+			    last; # for now, find the first match, and return. This could be bad if there are more matches!!!!
+			}
+		    }
+		}
+	    }
+	}
+	$log.= " -> overlapped comparisons matched: $overlap_matches of $no_match_count remaining query sequences\n";
+	$log.= "     ".timestr(timediff(Benchmark->new,$t_start))."\n";
+	
+	
+	
+	##########################################################################
+	# admit defeat for those genes we could not match, then wrap up
+	my $no_good_match_counter=0;
+	foreach my $query (@$query_md5s) {
+	    if($results->{$query->{id}}->{best_match} eq '') {
+		$no_good_match_counter++;
+		$results->{$query->{id}}->{status} = "could not find a match: ".$results->{$query->{id}}->{status};
+	    }
+	}
+	
+	my $total = $exact_match_count + $overlap_matches;
+	$log.= " -> mapped: $total of $target_feature_count target genome features\n";
+	$log.= " -> mapped: $total of $query_count query sequences\n";
+	$log.=" -> we were unable to map $no_good_match_counter of $query_count query sequences\n";
+	
+	$return_1 = $results;
+    
+    
+    
+    
+    #END map_to_fid_fast
+    my @_bad_returns;
+    (ref($return_1) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return_1\" (value was \"$return_1\")");
+    (!ref($log)) or push(@_bad_returns, "Invalid type for return variable \"log\" (value was \"$log\")");
+    if (@_bad_returns) {
+	my $msg = "Invalid returns passed to map_to_fid_fast:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'map_to_fid_fast');
+    }
+    return($return_1, $log);
+}
+
+
+
+
 =head2 moLocusIds_to_fid_in_genome
 
   $return_1, $log = $obj->moLocusIds_to_fid_in_genome($moLocusIds, $genomeId)
@@ -888,6 +1163,9 @@ sub moLocusIds_to_fid_in_genome
     my($return_1, $log);
     #BEGIN moLocusIds_to_fid_in_genome
     
+    
+    my $t_start = Benchmark->new;
+    
     # first go to MO and get the locus inforamation
     my $moDbh = $self->{moDbh};
     my $sql='SELECT Locus.locusId,Position.begin,Position.end,AASeq.sequence,Position.strand FROM AASeq,Locus,Scaffold,Position WHERE '.
@@ -909,11 +1187,13 @@ sub moLocusIds_to_fid_in_genome
 	    push @$query_sequences, {id=>${$row}[0],start=>${$row}[2], stop=>${$row}[1], seq=>${$row}[3] };
 	}
     }
+    my $query_time = timestr(timediff(Benchmark->new,$t_start));
     
     # then we can call the method and save the results
     my ($res, $l) = $self->map_to_fid($query_sequences,$genomeId);
     $return_1 = $res;
     $log = $l;
+    $log =" -> query on microbes online for locus information\n     ".$query_time."\n".$log;
     
     
     #END moLocusIds_to_fid_in_genome
@@ -924,6 +1204,130 @@ sub moLocusIds_to_fid_in_genome
 	my $msg = "Invalid returns passed to moLocusIds_to_fid_in_genome:\n" . join("", map { "\t$_\n" } @_bad_returns);
 	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
 							       method_name => 'moLocusIds_to_fid_in_genome');
+    }
+    return($return_1, $log);
+}
+
+
+
+
+=head2 moLocusIds_to_fid_in_genome_fast
+
+  $return_1, $log = $obj->moLocusIds_to_fid_in_genome_fast($moLocusIds, $genomeId)
+
+=over 4
+
+=item Parameter and return types
+
+=begin html
+
+<pre>
+$moLocusIds is a reference to a list where each element is a moLocusId
+$genomeId is a genomeId
+$return_1 is a reference to a hash where the key is a moLocusId and the value is a result
+$log is a status
+moLocusId is an int
+genomeId is a kbaseId
+kbaseId is a string
+result is a reference to a hash where the following keys are defined:
+	best_match has a value which is a fid
+	status has a value which is a status
+fid is a string
+status is a string
+
+</pre>
+
+=end html
+
+=begin text
+
+$moLocusIds is a reference to a list where each element is a moLocusId
+$genomeId is a genomeId
+$return_1 is a reference to a hash where the key is a moLocusId and the value is a result
+$log is a status
+moLocusId is an int
+genomeId is a kbaseId
+kbaseId is a string
+result is a reference to a hash where the following keys are defined:
+	best_match has a value which is a fid
+	status has a value which is a status
+fid is a string
+status is a string
+
+
+=end text
+
+
+
+=item Description
+
+Performs the same function as moLocusIds_to_fid_in_genome, but does not retrieve protein sequences for the locus Ids - it simply
+uses md5 information and start/stop positions to identify matches.  It is therefore faster, but will not work if genomes are not
+identical.
+
+=back
+
+=cut
+
+sub moLocusIds_to_fid_in_genome_fast
+{
+    my $self = shift;
+    my($moLocusIds, $genomeId) = @_;
+
+    my @_bad_arguments;
+    (ref($moLocusIds) eq 'ARRAY') or push(@_bad_arguments, "Invalid type for argument \"moLocusIds\" (value was \"$moLocusIds\")");
+    (!ref($genomeId)) or push(@_bad_arguments, "Invalid type for argument \"genomeId\" (value was \"$genomeId\")");
+    if (@_bad_arguments) {
+	my $msg = "Invalid arguments passed to moLocusIds_to_fid_in_genome_fast:\n" . join("", map { "\t$_\n" } @_bad_arguments);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'moLocusIds_to_fid_in_genome_fast');
+    }
+
+    my $ctx = $Bio::KBase::MOTranslationService::Service::CallContext;
+    my($return_1, $log);
+    #BEGIN moLocusIds_to_fid_in_genome_fast
+    
+	my $t_start = Benchmark->new;
+	
+	# first go to MO and get the locus information
+	my $moDbh = $self->{moDbh};
+	my $sql='SELECT Locus.locusId,Position.begin,Position.end,Locus2MD5.aaMD5,Position.strand FROM Locus,Position,Locus2MD5 WHERE '.
+		'Locus.priority=1 AND Locus.locusId=Locus2MD5.locusId AND Locus.version=Locus2MD5.version AND '.
+		'Locus.posId=Position.posId AND Locus.locusId IN (';
+	my $placeholders='?,' x (scalar @$moLocusIds);
+	chop $placeholders;
+	$sql.=$placeholders.')';
+	my $sth=$moDbh->prepare($sql);
+	$sth->execute(@$moLocusIds);
+	
+	# process the query results and store them in an object we can pass to the map_to_fid method
+	my $query_md5s = [];
+	while (my $row=$sth->fetch) {
+	    # switch the start and stop if we are on the minus strand
+	    if (${$row}[4] eq '+') {
+		push @$query_md5s, {id=>${$row}[0],start=>${$row}[1], stop=>${$row}[2], md5=>${$row}[3] };
+	    } else {
+		push @$query_md5s, {id=>${$row}[0],start=>${$row}[2], stop=>${$row}[1], md5=>${$row}[3] };
+	    }
+	}
+	my $query_time = timestr(timediff(Benchmark->new,$t_start));
+    
+	
+	# then we can call the method and save the results
+	my ($res, $l) = $self->map_to_fid_fast($query_md5s,$genomeId);
+	$return_1 = $res;
+	$log = $l;
+	$log =" -> query on microbes online for locus information\n     ".$query_time."\n".$log;
+    
+    
+    #END moLocusIds_to_fid_in_genome_fast
+    my @_bad_returns;
+    (ref($return_1) eq 'HASH') or push(@_bad_returns, "Invalid type for return variable \"return_1\" (value was \"$return_1\")");
+    (!ref($log)) or push(@_bad_returns, "Invalid type for return variable \"log\" (value was \"$log\")");
+    if (@_bad_returns) {
+	my $msg = "Invalid returns passed to moLocusIds_to_fid_in_genome_fast:\n" . join("", map { "\t$_\n" } @_bad_returns);
+	Bio::KBase::Exceptions::ArgumentValidationError->throw(error => $msg,
+							       method_name => 'moLocusIds_to_fid_in_genome_fast');
     }
     return($return_1, $log);
 }
@@ -1468,6 +1872,54 @@ stop has a value which is a position
 a reference to a hash where the following keys are defined:
 id has a value which is a protein_id
 seq has a value which is a protein_sequence
+start has a value which is a position
+stop has a value which is a position
+
+
+=end text
+
+=back
+
+
+
+=head2 query_md5
+
+=over 4
+
+
+
+=item Description
+
+A structure for specifying the input md5 queries for the map_to_fid_fast method.  This structure assumes
+you will be making queries with identical genomes, so it requires the start and stop.
+
+        protein_id id         - arbitrary ID that must be unique within the set of query sequences
+        protein md5           - the computed md5 of the protein sequence
+        position start        - the start position of the start codon in the genome contig (may be a larger
+                                number than stop if the gene is on the reverse strand)
+        position stop         - the last position of he stop codon in the genome contig
+
+
+=item Definition
+
+=begin html
+
+<pre>
+a reference to a hash where the following keys are defined:
+id has a value which is a protein_id
+md5 has a value which is a protein
+start has a value which is a position
+stop has a value which is a position
+
+</pre>
+
+=end html
+
+=begin text
+
+a reference to a hash where the following keys are defined:
+id has a value which is a protein_id
+md5 has a value which is a protein
 start has a value which is a position
 stop has a value which is a position
 

@@ -110,6 +110,24 @@ module MOTranslation {
 		position stop;
 	} query_sequence;
 	
+	
+	/*
+	A structure for specifying the input md5 queries for the map_to_fid_fast method.  This structure assumes
+	you will be making queries with identical genomes, so it requires the start and stop.
+	
+		protein_id id         - arbitrary ID that must be unique within the set of query sequences
+		protein md5           - the computed md5 of the protein sequence
+		position start        - the start position of the start codon in the genome contig (may be a larger
+		                        number than stop if the gene is on the reverse strand)
+		position stop         - the last position of he stop codon in the genome contig
+	*/
+	typedef structure {
+		protein_id id;
+		protein md5;
+		position start;
+		position stop;
+	} query_md5;
+	
 	/*
 	A simple structure which returns the best matching FID to a given query (see query_sequence) and attaches
 	a short status string indicating how the match was made, or which consoles you after a match could not
@@ -144,12 +162,28 @@ module MOTranslation {
 	
 	
 	/*
+	Performs the same function as map_to_fid, except it does not require protein sequences to be defined. Instead, it assumes
+	genomes are identical and simply looks for genes on the same strand that overlap by at least 50%. Since no sequences are
+	compared, this method is fast.  But, since no sequences are compared, this method only makes sense for identical genomes
+	*/
+	funcdef map_to_fid_fast(list<query_md5>query_md5s, genomeId genomeId) returns (mapping<protein_id,result>, status log);
+	
+	
+	/*
 	A method designed to map MicrobesOnline locus ids to the features of a specific target genome in kbase.  Under the hood, this
 	method simply fetches MicrobesOnline data and calls the 'map_to_fid' method defined in this service.  Therefore, all the caveats
 	and disclaimers of the 'map_to_fid' method apply to this function as well, so be sure to read the documenation for the 'map_to_fid'
 	method as well!
 	*/
 	funcdef moLocusIds_to_fid_in_genome(list<moLocusId> moLocusIds, genomeId genomeId) returns (mapping<moLocusId,result>, status log);
+	
+	/*
+	Performs the same function as moLocusIds_to_fid_in_genome, but does not retrieve protein sequences for the locus Ids - it simply
+	uses md5 information and start/stop positions to identify matches.  It is therefore faster, but will not work if genomes are not
+	identical.
+	*/
+	funcdef moLocusIds_to_fid_in_genome_fast(list<moLocusId> moLocusIds, genomeId genomeId) returns (mapping<moLocusId,result>, status log);
+	
 	
 	
 	/*

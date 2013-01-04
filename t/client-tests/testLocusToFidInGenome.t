@@ -9,9 +9,9 @@ use Test::More;
 
 
 use_ok("Bio::KBase::MOTranslationService::Client");
-#my $translation = Bio::KBase::MOTranslationService::Client->new("http://localhost:7061");
-my $translation = Bio::KBase::MOTranslationService::Client->new("http://140.221.92.71:7061");
-my $target_genome = "kb|g.371";
+my $translation = Bio::KBase::MOTranslationService::Client->new("http://localhost:7061");
+#my $translation = Bio::KBase::MOTranslationService::Client->new("http://140.221.92.71:7061");
+my $target_genome = "kb|g.372";
 
 
 #################### test 1: get MO data by sql, then call the more general translate method
@@ -29,6 +29,10 @@ my $moDbh=$dbKernel->{_dbh};
 
 
 my $tax_id = "211586";
+#my $kb_genome_ids=$translation->moTaxonomyId_to_genomes($tax_id);
+#print Dumper($kb_genome_ids)."\n";
+#die;
+
 
 my $query_sequences = [];
 my $sql='SELECT Locus.locusId,Position.begin,Position.end,AASeq.sequence,Position.strand FROM AASeq,Locus,Scaffold,Position WHERE '.
@@ -52,7 +56,6 @@ while (my $row=$sth->fetch) {
 
 
 
-
 ################## test 2, try it with MO locus ids directly
 
 # using data from the first query, create the input arguement
@@ -61,8 +64,9 @@ foreach my $query (@$query_sequences) {
     push $locus_ids, $query->{id};
 }
 
-print Dumper($locus_ids)."\n";
+#print Dumper($locus_ids)."\n";
 
+#my ($result, $log) = $translation->moLocusIds_to_fid_in_genome_fast($locus_ids,$target_genome);
 my ($result, $log) = $translation->moLocusIds_to_fid_in_genome($locus_ids,$target_genome);
 print Dumper($result)."\n";
 print "LOG:\n$log\n";
