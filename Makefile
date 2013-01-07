@@ -88,11 +88,12 @@ test-service:
 	done
 
 
-# here are the standard KBase deployment targets (deploy, deploy-all, deploy-client, deploy-scripts, & deploy-server)
-deploy: deploy-client
-	@echo "OK... Done deploying client code for $(SERVICE)."
+# here are the standard KBase deployment targets (deploy, deploy-all, deploy-client, deploy-scripts, & deploy-service)
+# deploy-all is deprecated, deploy takes its place
+#deploy: deploy-client
+#	@echo "OK... Done deploying $(SERVICE)."
 
-deploy-all: deploy-client deploy-service
+deploy: deploy-client deploy-service
 	@echo "OK... Done deploying ALL artifacts (includes clients, scripts and server) of $(SERVICE)."
 
 deploy-client: compile-typespec deploy-libs deploy-scripts deploy-docs
