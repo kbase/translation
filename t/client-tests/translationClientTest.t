@@ -30,7 +30,7 @@ my $localServer=0;
 # use this URI for testing test deployments from outside Magellan
 #my $uri='http://140.221.92.231/services/translation';
 # use this URI for testing test deployments on deploy host
-my $uri='http://localhost:7061/services/translation';
+my $uri='http://localhost:7061/';
 # use this URI for testing production deployment
 #my $uri='http://kbase.us/services/translation';
 my $serviceName='MOTranslationService';
