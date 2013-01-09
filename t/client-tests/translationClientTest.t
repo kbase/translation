@@ -27,7 +27,12 @@ use lib "$FindBin::Bin/..";
 my $num_tests = 0;
 my $debug=0;
 my $localServer=0;
-my $uri='http://140.221.92.231/services/translation';
+# use this URI for testing test deployments from outside Magellan
+#my $uri='http://140.221.92.231/services/translation';
+# use this URI for testing test deployments on deploy host
+#my $uri='http://localhost:7061/services/translation';
+# use this URI for testing production deployment
+my $uri='http://kbase.us/services/translation';
 my $serviceName='MOTranslationService';
 
 my $getoptResult=GetOptions(
