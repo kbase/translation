@@ -51,8 +51,8 @@ sub new
 #	my $moDbh=DBI->connect("DBI:mysql:genomics:db1.chicago.kbase.us",'genomics');
         my $dbms='mysql';
         my $dbName='genomics';
-        my $user='genomics';
-        my $pass=undef;
+        my $user='guest';
+        my $pass='guest';
         my $port=3306;
         my $dbhost='db1.chicago.kbase.us';
 	# switch to ssh tunnel
