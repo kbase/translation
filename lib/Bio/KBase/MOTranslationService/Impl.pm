@@ -55,6 +55,9 @@ sub new
         my $pass=undef;
         my $port=3306;
         my $dbhost='db1.chicago.kbase.us';
+	# use kkeller VM
+	$dbName='***REMOVED***';
+	$dbhost='140.221.84.194';
 	# switch to ssh tunnel
 	 #my $port=13306;
 	 #my $dbhost='127.0.0.1';
