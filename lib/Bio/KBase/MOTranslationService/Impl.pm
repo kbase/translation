@@ -237,10 +237,10 @@ sub proteins_to_moLocusIds
 	{
 		my $moDbh=$self->{moDbh};
 
-		my $sql='SELECT DISTINCT aaMD5,locusId FROM Locus2MD5 WHERE aaMD5 IN (';
+		my $sql='SELECT aaMD5,locusId,count(*) FROM Locus2MD5 WHERE aaMD5 IN (';
 		my $placeholders='?,' x (scalar @$proteins);
 		chop $placeholders;
-		$sql.=$placeholders.')';
+		$sql.=$placeholders.') group by aaMD5, locusId';
 
 		my $sth=$moDbh->prepare($sql);
 		$sth->execute(@$proteins);
@@ -330,7 +330,8 @@ sub moLocusIds_to_fids
 
 	foreach my $moLocusId (keys %{$mo2proteins})
 	{
-		$return->{$moLocusId}=$proteins2fids->{$mo2proteins->{$moLocusId}};
+		$return->{$moLocusId}=$proteins2fids->{$mo2proteins->{$moLocusId}} ?
+		    $proteins2fids->{$mo2proteins->{$moLocusId}} : [];
 	}
 
     #END moLocusIds_to_fids
@@ -411,7 +412,7 @@ sub moLocusIds_to_proteins
 	{
 		my $moDbh=$self->{moDbh};
 
-		my $sql='SELECT DISTINCT locusId,aaMD5 FROM Locus2MD5 WHERE locusId IN (';
+		my $sql='SELECT locusId,aaMD5 FROM Locus2MD5 WHERE locusId IN (';
 		my $placeholders='?,' x (scalar @$moLocusIds);
 		chop $placeholders;
 		$sql.=$placeholders.')';
