@@ -68,7 +68,7 @@ $num_tests++;
 ##########
 # Set up variables and data inputs for tests.
 my @kb_protein_md5s = qw(cf87188c893421a9a13c9300b1c3cd68 a13c9b9f465cbb30682448c255b27d3d);
-my @kb_fids = qw(kb|g.20029.peg.3202 kb|g.20029.peg.2255);
+my @kb_fids = qw(kb|g.9991.peg.466);
 my @mo_locus_ids = qw(208945 7704787);
 
 my $method_calls = {

@@ -55,6 +55,11 @@ sub new
         my $pass='guest';
         my $port=3306;
         my $dbhost='db1.chicago.kbase.us';
+	# use kkeller VM
+	$dbName='***REMOVED***';
+	$user='genomics';
+	$pass=undef;
+	$dbhost='140.221.84.194';
 	# switch to ssh tunnel
 	 #my $port=13306;
 	 #my $dbhost='127.0.0.1';
@@ -67,7 +72,7 @@ sub new
         my $moDbh=$dbKernel->{_dbh};
 
 	# need to use config file here to get the url!!!!! 
-	my $erdb = Bio::KBase::ERDB_Service::Client->new("http://localhost:7099");
+	my $erdb = Bio::KBase::ERDB_Service::Client->new("http://kbase.us/services/erdb_service");
 	
 	$self->{moDbh}=$moDbh;
 	$self->{cdmi}=$cdmi;
