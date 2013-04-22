@@ -28,9 +28,9 @@ my $num_tests = 0;
 my $debug=0;
 my $localServer=0;
 # use this URI for testing test deployments from outside Magellan
-#my $uri='http://140.221.92.231/services/translation';
+my $uri='http://kbase.us/services/translation';
 # use this URI for testing test deployments on deploy host
-my $uri='http://localhost:7061/';
+#my $uri='http://localhost:7061/';
 # use this URI for testing production deployment
 #my $uri='http://kbase.us/services/translation';
 my $serviceName='MOTranslationService';
@@ -68,7 +68,7 @@ $num_tests++;
 ##########
 # Set up variables and data inputs for tests.
 my @kb_protein_md5s = qw(cf87188c893421a9a13c9300b1c3cd68 a13c9b9f465cbb30682448c255b27d3d);
-my @kb_fids = qw(kb|g.9991.peg.466);
+my @kb_fids = qw(kb|g.3405.peg.674);
 my @mo_locus_ids = qw(208945 7704787);
 
 my $method_calls = {
