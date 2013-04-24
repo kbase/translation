@@ -72,7 +72,7 @@ sub new
         my $moDbh=$dbKernel->{_dbh};
 
 	# need to use config file here to get the url!!!!! 
-	my $erdb = Bio::KBase::ERDB_Service::Client->new("http://kbase.us/services/erdb_service");
+	my $erdb = Bio::KBase::ERDB_Service::Client->new("https://kbase.us/services/erdb_service");
 	
 	$self->{moDbh}=$moDbh;
 	$self->{cdmi}=$cdmi;
