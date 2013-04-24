@@ -60,6 +60,12 @@ sub new
 	$user='genomics';
 	$pass=undef;
 	$dbhost='140.221.84.194';
+       # use devdb1.newyork instance
+       $dbName='genomics_dev';
+       $user='genomicsselect';
+       $pass='kusei*kulm';
+       $dbhost='devdb1.newyork.kbase.us';
+
 	# switch to ssh tunnel
 	 #my $port=13306;
 	 #my $dbhost='127.0.0.1';
