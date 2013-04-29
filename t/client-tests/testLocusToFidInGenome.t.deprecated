@@ -9,9 +9,10 @@ use Test::More;
 
 
 use_ok("Bio::KBase::MOTranslationService::Client");
-my $translation = Bio::KBase::MOTranslationService::Client->new("http://localhost:7061");
+#my $translation = Bio::KBase::MOTranslationService::Client->new("http://localhost:7061");
+my $translation = Bio::KBase::MOTranslationService::Client->new("http://kbase.us/services/translation");
 #my $translation = Bio::KBase::MOTranslationService::Client->new("http://140.221.92.71:7061");
-#my $translation = Bio::KBase::MOTranslationService::Client->new("http://140.221.92.231/translation");
+#my $translation = Bio::KBase::MOTranslationService::Client->new("http://kbase.us/translation");
 my $target_genome = "kb|g.372";
 
 
@@ -62,7 +63,7 @@ while (my $row=$sth->fetch) {
 # using data from the first query, create the input arguement
 my $locus_ids = [];
 foreach my $query (@$query_sequences) {
-    push $locus_ids, $query->{id};
+    push @{$locus_ids}, $query->{id};
 }
 
 #print Dumper($locus_ids)."\n";
