@@ -134,6 +134,8 @@ deploy-server-scripts:
 	@echo '#!/bin/sh' > ./start_service
 	@echo "echo starting $(SERVICE) server." >> ./start_service
 	@echo 'export PERL5LIB=$$PERL5LIB:$(TARGET)/lib' >> ./start_service
+	@echo 'export KB_DEPLOYMENT_CONFIG=$(TARGET)/deployment.cfg' >> ./start_service
+	@echo 'export SERVICE=$(SERVICE)' >> ./start_service
 	@echo '#uncomment to debug: export STARMAN_DEBUG=1' >> ./start_service
 	@echo "$(DEPLOY_RUNTIME)/bin/starman --listen :$(SERVICE_PORT) --pid $(PID_FILE) --daemonize \\" >> ./start_service
 	@echo "  --access-log $(ACCESS_LOG_FILE) \\" >>./start_service
@@ -143,6 +145,8 @@ deploy-server-scripts:
 	# Second, create a debug start script that is not daemonized
 	@echo '#!/bin/sh' > ./debug_start_service
 	@echo 'export PERL5LIB=$$PERL5LIB:$(TARGET)/lib' >> ./debug_start_service
+	@echo 'export KB_DEPLOYMENT_CONFIG=$(TARGET)/deployment.cfg' >> ./start_service
+	@echo 'export SERVICE=$(SERVICE)' >> ./start_service
 	@echo 'export STARMAN_DEBUG=1' >> ./debug_start_service
 	@echo "$(DEPLOY_RUNTIME)/bin/starman --listen :$(SERVICE_PORT) --workers 1 \\" >> ./debug_start_service
 	@echo "    $(TARGET)/lib/$(SERVICE_PSGI_FILE)" >> ./debug_start_service
