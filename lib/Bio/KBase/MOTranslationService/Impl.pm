@@ -26,13 +26,14 @@ info service).
 #BEGIN_HEADER
 
 use Bio::KBase;
-use Bio::KBase::CDMI::CDMIClient;
-use Bio::KBase::ERDB_Service::Client;
-use DBKernel;
-
 use Data::Dumper;
 use Benchmark;
 use List::Util qw[min max];
+use Config::Simple;
+
+use Bio::KBase::CDMI::CDMIClient;
+use Bio::KBase::ERDB_Service::Client;
+use DBKernel;
 
 #END_HEADER
 
@@ -48,45 +49,40 @@ sub new
 #	my $kb = Bio::KBase->new();
 	my $cdmi = Bio::KBase::CDMI::CDMIClient->new;
 
-#	my $moDbh=DBI->connect("DBI:mysql:genomics:db1.chicago.kbase.us",'genomics');
-        my $dbms='mysql';
-        my $dbName='genomics';
-        my $user='guest';
-        my $pass='guest';
-        my $port=3306;
-        my $dbhost='db1.chicago.kbase.us';
-	# use kkeller VM
-	$dbName='***REMOVED***';
-	$user='genomics';
-	$pass=undef;
-	$dbhost='140.221.84.194';
-       # use devdb1.newyork instance
-       $dbName='***REMOVED***';
-       $user='***REMOVED***';
-       $pass='***REMOVED***';
-       $dbhost='***REMOVED***';
+        my $configFile = $ENV{KB_DEPLOYMENT_CONFIG};
+        # don't want this hardcoded; figure out what make puts out
+            my $SERVICE = $ENV{SERVICE};
 
-	# switch to ssh tunnel
-	 #my $port=13306;
-	 #my $dbhost='127.0.0.1';
-	# switch to public microbes online
-         #$user='guest';
-         #$pass='guest';
-         #$dbhost='pub.microbesonline.org';
-        my $sock='';
-        my $dbKernel = DBKernel->new($dbms, $dbName, $user, $pass, $port, $dbhost, $sock);
+            my $config = Config::Simple->new();
+            $config->read($configFile);
+            my @paramList = qw(dbname sock user pass dbhost port dbms erdb_url blast_db_dir);
+            my %params;
+            foreach my $param (@paramList)
+            {
+                my $value = $config->param("$SERVICE.$param");
+                if ($value)
+                {
+                    $params{$param} = $value;
+                }
+            }
+
+        my $dbKernel = DBKernel->new(
+                $params{dbms}, $params{dbname},
+                 $params{user}, $params{pass}, $params{port},
+                 $params{dbhost}, $params{sock},
+                );
         my $moDbh=$dbKernel->{_dbh};
 
 	# need to use config file here to get the url!!!!! 
-	my $erdb = Bio::KBase::ERDB_Service::Client->new("http://kbase.us/services/erdb_service");
+	my $erdb = Bio::KBase::ERDB_Service::Client->new($params{erdb_url});
 	
 	$self->{moDbh}=$moDbh;
 	$self->{cdmi}=$cdmi;
 	$self->{erdb}=$erdb;
 	
 	# change this to where you want the blast databases stored...
-	$self->{scratch_space}="/kb/deployment/services/translation/";
-	$self->{scratch_space}="/kb/deployment/services/translation/";
+	# use deploy.cfg instead
+	$self->{scratch_space}=$params{blast_db_dir};
 
     #END_CONSTRUCTOR
 
