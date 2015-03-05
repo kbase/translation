@@ -4,3 +4,5 @@ used to retrieve MicrobesOnline annotations for KBase objects.
 
 For more details on the current status of this module, see the
 latest release notes in docs/.
+
+Join the chat at https://gitter.im/kbase/translation
